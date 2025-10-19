@@ -1,0 +1,158 @@
+# ============================================
+# Dependencies
+# ============================================
+node_modules/
+package-lock.json  # Opcional: algunos proyectos prefieren incluirlo
+
+# ============================================
+# Build Outputs
+# ============================================
+dist/
+dist-electron/
+dist-ssr/
+out/
+build/
+
+# ============================================
+# Logs
+# ============================================
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# ============================================
+# Environment Variables
+# ============================================
+.env
+.env.local
+.env.*.local
+.env.production
+
+# IMPORTANTE: Mantener .env.example para documentación
+!.env.example
+
+# ============================================
+# User Data (Recordings, Transcriptions, Models)
+# ============================================
+recordings/
+test-recordings/
+models/
+*.wav
+*.mp3
+*.ogg
+*.m4a
+*.flac
+*.aac
+
+# Archivos de transcripción
+*.srt
+*.vtt
+*.txt
+transcriptions/
+
+# EXCEPCIONES: Permitir archivos de prueba pequeños
+!tests/fixtures/*.wav
+!tests/fixtures/*.mp3
+
+# ============================================
+# Database Files
+# ============================================
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+
+# ============================================
+# Whisper AI Models (grandes, no incluir)
+# ============================================
+ggml-*.bin
+whisper-*.bin
+*.pt
+*.pth
+
+# ============================================
+# Electron
+# ============================================
+# Electron cache
+.electron/
+electron-cache/
+
+# ============================================
+# Editor Directories and Files
+# ============================================
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+.idea/
+*.swp
+*.swo
+*.swn
+*~
+
+# VS Code workspace
+*.code-workspace
+
+# ============================================
+# OS Files
+# ============================================
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Linux
+*~
+.directory
+.Trash-*
+
+# ============================================
+# IDE Project Files
+# ============================================
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# ============================================
+# Testing
+# ============================================
+coverage/
+.nyc_output/
+*.lcov
+
+# ============================================
+# Temporary Files
+# ============================================
+*.tmp
+*.temp
+*.cache
+.cache/
+.temp/
+tmp/
+
+# ============================================
+# Compiled Files
+# ============================================
+*.tsbuildinfo
+
+# ============================================
+# Misc
+# ============================================
+*.local

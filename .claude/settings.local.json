@@ -1,0 +1,37 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node_modules.binffmpeg -list_devices true -f dshow -i dummy)",
+      "Bash(findstr /i \"audio\")",
+      "Bash(node_modules/.bin/ffmpeg -list_devices true -f dshow -i dummy)",
+      "Bash(\"node_modules/@ffmpeg-installer/win32-x64/ffmpeg.exe\" -list_devices true -f dshow -i dummy)",
+      "Bash(taskkill /PID 3588 /F)",
+      "Bash(cmd /c taskkill /PID 3588 /F)",
+      "Bash(netstat -ano)",
+      "Bash(findstr :5173)",
+      "Bash(powershell -Command \"Stop-Process -Id 3588 -Force\")",
+      "Bash(cmake --version)",
+      "Bash(where cmake)",
+      "Bash(npm run build)",
+      "Bash(npm install form-data)",
+      "Bash(npm install whisper-node-addon)",
+      "Bash(npm install @fugood/whisper.node)",
+      "Bash(npm install)",
+      "Bash(npm install --save-dev vite wait-on concurrently)",
+      "Bash(dir node_modules)",
+      "Bash(findstr /i \"vite\")",
+      "Bash(powershell -Command \"Remove-Item -Recurse -Force node_modules, package-lock.json -ErrorAction SilentlyContinue; npm install\")",
+      "Bash(npx vite --version)",
+      "Bash(cat node_modules/@fugood/whisper.node/lib/index.js)",
+      "Bash(cat .env)",
+      "Bash(findstr \".env\")",
+      "Bash(dir /s /a-d)",
+      "Bash(findstr /i \"\\.bin \\.wav \\.mp3 \\.db\")",
+      "Bash(powershell -Command \"Get-ChildItem -Recurse -File | Where-Object { $_Extension -match ''\\.(bin|wav|mp3|db)$'' } | Select-Object FullName, @{Name=''SizeMB'';Expression={[math]::Round($_Length/1MB,2)}} | Format-Table -AutoSize\")",
+      "Bash(awk '{print $9}')",
+      "Bash(git add -A)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

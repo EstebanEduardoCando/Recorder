@@ -1,4 +1,3 @@
-const { app } = require('electron');
 const path = require('path');
 const fs = require('fs').promises;
 const ffmpeg = require('fluent-ffmpeg');
@@ -13,14 +12,24 @@ class AudioRecorder {
     this.isRecording = false;
     this.isPaused = false;
     this.startTime = null;
-    this.recordingsDir = path.join(app.getPath('userData'), 'recordings');
+    this.recordingsDir = null;
+  }
+
+  getRecordingsDir() {
+    if (!this.recordingsDir) {
+      // Lazy initialization - obtener el path del servicio de configuración
+      const configService = require('./configService');
+      this.recordingsDir = configService.getRecordingsPath();
+    }
+    return this.recordingsDir;
   }
 
   async ensureRecordingsDir() {
+    const recordingsDir = this.getRecordingsDir();
     try {
-      await fs.access(this.recordingsDir);
+      await fs.access(recordingsDir);
     } catch {
-      await fs.mkdir(this.recordingsDir, { recursive: true });
+      await fs.mkdir(recordingsDir, { recursive: true });
     }
   }
 
@@ -40,7 +49,7 @@ class AudioRecorder {
     // Generar nombre de archivo único
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     const filename = `recording-${timestamp}.${format}`;
-    this.outputPath = path.join(this.recordingsDir, filename);
+    this.outputPath = path.join(this.getRecordingsDir(), filename);
 
     return new Promise((resolve, reject) => {
       try {

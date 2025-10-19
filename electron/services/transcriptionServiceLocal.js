@@ -11,17 +11,25 @@ const https = require('https');
 class TranscriptionServiceLocal {
   constructor() {
     this.isInitialized = false;
-    this.modelsDir = path.join(app.getPath('userData'), 'models');
+    this.modelsDir = null;
     this.whisperContext = null;
     this.modelName = 'base';
     this.modelPath = null;
   }
 
+  getModelsDir() {
+    if (!this.modelsDir) {
+      this.modelsDir = path.join(app.getPath('userData'), 'models');
+    }
+    return this.modelsDir;
+  }
+
   async ensureModelsDir() {
+    const modelsDir = this.getModelsDir();
     try {
-      await fs.access(this.modelsDir);
+      await fs.access(modelsDir);
     } catch {
-      await fs.mkdir(this.modelsDir, { recursive: true });
+      await fs.mkdir(modelsDir, { recursive: true });
     }
   }
 
@@ -29,7 +37,7 @@ class TranscriptionServiceLocal {
     await this.ensureModelsDir();
 
     const modelFile = `ggml-${modelName}.bin`;
-    this.modelPath = path.join(this.modelsDir, modelFile);
+    this.modelPath = path.join(this.getModelsDir(), modelFile);
 
     // Verificar si ya existe
     try {

@@ -7,8 +7,13 @@ Aplicación de escritorio para grabar y transcribir reuniones de forma local y p
 - 🎙️ Grabación de audio del micrófono
 - ⏸️ Pausar y reanudar grabaciones
 - 📝 Transcripción automática local usando Whisper AI
+- 🎵 **Reproductor de audio integrado** con controles completos
+- ⚙️ **Panel de configuración** para personalizar la aplicación
+- 📁 **Directorio de grabaciones configurable**
+- 🤖 **Selección de modelo Whisper** (tiny, base, small, medium, large)
+- 🌍 **Configuración de idioma** para transcripción
 - ⏱️ Timestamps para cada segmento de la transcripción
-- 📄 Exportar transcripciones a TXT y SRT
+- 📄 Exportar transcripciones a TXT, SRT, VTT y JSON
 - 💾 Almacenamiento completamente offline
 - 🔒 Privacidad total - ningún dato sale de tu equipo
 
@@ -49,25 +54,52 @@ npm run lint
 
 ## Uso
 
-1. **Grabar una reunión:**
+### 1. Configuración Inicial (Recomendado)
+   - Haz clic en el botón de configuración (⚙️) en la esquina superior derecha
+   - **Carpeta de grabaciones:** Selecciona dónde quieres guardar tus grabaciones
+   - **Modelo de Whisper:** Elige el modelo según tu balance velocidad/precisión:
+     - `tiny`: ~75MB - Más rápido, menor precisión
+     - `base`: ~142MB - Buen balance (predeterminado)
+     - `small`: ~466MB - Mejor precisión
+     - `medium`: ~1.5GB - Alta precisión
+     - `large`: ~2.9GB - Máxima precisión
+   - **Idioma:** Selecciona el idioma de transcripción o déjalo en "auto"
+   - **Formato de exportación:** Elige entre TXT, SRT, VTT o JSON
+   - Haz clic en "💾 Guardar cambios"
+
+### 2. Grabar una Reunión
    - Haz clic en "⏺ Grabar"
    - Habla al micrófono
+   - Usa "⏸ Pausar" si necesitas interrumpir temporalmente
    - Haz clic en "⏹ Detener" cuando termines
 
-2. **Transcripción automática:**
-   - La transcripción comenzará automáticamente al detener la grabación
-   - Espera mientras Whisper procesa el audio (puede tardar un poco en la primera vez)
+### 3. Reproducir la Grabación
+   - Aparecerá automáticamente un reproductor de audio después de detener
+   - Controles disponibles:
+     - ▶️/⏸️ Reproducir/Pausar
+     - Barra de progreso para navegar
+     - Control de volumen
+     - 📂 Abrir en reproductor externo
 
-3. **Exportar:**
+### 4. Transcripción Automática
+   - La transcripción comenzará automáticamente al detener la grabación
+   - Espera mientras Whisper procesa el audio
+   - Primera vez: descargará el modelo (~142MB para "base")
+   - Verás el progreso en la barra de estado
+
+### 5. Exportar Transcripción
    - Haz clic en "Exportar TXT" para obtener el texto plano
    - Haz clic en "Exportar SRT" para obtener subtítulos con timestamps
+   - El formato exportado depende de tu configuración
 
 ## Archivos de Salida
 
-Los archivos se guardan en:
+Por defecto, los archivos se guardan en:
 - **Windows:** `C:\Users\<usuario>\AppData\Roaming\recorder\recordings\`
 - **macOS:** `~/Library/Application Support/recorder/recordings/`
 - **Linux:** `~/.config/recorder/recordings/`
+
+Puedes cambiar esta ubicación en el **panel de configuración** (⚙️).
 
 ## Construcción
 
@@ -81,31 +113,27 @@ El instalador se generará en la carpeta `dist-electron/`.
 
 ## Estado del Proyecto
 
-✅ **MVP Completado**
+✅ **v0.2.0 - MVP con Reproductor y Configuración**
 
 Funcionalidades implementadas:
 - ✅ Grabación de audio del micrófono
 - ✅ Pausar/reanudar grabaciones
 - ✅ Transcripción local con Whisper AI
-- ✅ Exportación a TXT y SRT
+- ✅ **Reproductor de audio integrado**
+- ✅ **Panel de configuración completo**
+- ✅ **Directorio de grabaciones configurable**
+- ✅ **Selección de modelo Whisper desde la UI**
+- ✅ **Configuración de idioma**
+- ✅ Exportación a TXT, SRT, VTT y JSON
 - ✅ Interfaz de usuario intuitiva
 
 Próximas funcionalidades:
 - 🚧 Dashboard con historial de grabaciones
 - 🚧 Base de datos para gestión de reuniones
 - 🚧 Captura de audio del sistema
-- 🚧 Configuración de modelos Whisper
 - 🚧 Visualizador de forma de onda
-
-## Modelos de Whisper Disponibles
-
-Puedes cambiar el modelo en el código (`src/App.tsx`, línea 106):
-
-- `tiny`: ~75MB, más rápido, menor precisión
-- `base`: ~142MB, buen balance (predeterminado)
-- `small`: ~466MB, mejor precisión
-- `medium`: ~1.5GB, alta precisión
-- `large`: ~2.9GB, máxima precisión
+- 🚧 Reproducción sincronizada con transcripción
+- 🚧 Tema oscuro/claro
 
 ## Solución de Problemas
 

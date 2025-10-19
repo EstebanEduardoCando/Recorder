@@ -21,6 +21,15 @@ interface Window {
     exportTranscriptionSRT: (transcription: TranscriptionResult, outputPath: string) => Promise<SaveResult>;
     downloadWhisperModel: (modelName: string) => Promise<ModelDownloadResult>;
 
+    // Configuration
+    getConfig: () => Promise<ConfigResult>;
+    updateConfig: (updates: Partial<AppConfig>) => Promise<ConfigResult>;
+    resetConfig: () => Promise<ConfigResult>;
+    selectDirectory: (defaultPath?: string) => Promise<DirectorySelectResult>;
+
+    // File system
+    openFile: (filePath: string) => Promise<{ success: boolean; error?: string }>;
+
     // Event listeners
     onRecordingProgress: (callback: (data: RecordingProgress) => void) => void;
     onTranscriptionProgress: (callback: (data: TranscriptionProgress) => void) => void;
@@ -98,5 +107,27 @@ interface ModelDownloadResult {
   success: boolean;
   message: string;
   modelName?: string;
+  error?: string;
+}
+
+interface AppConfig {
+  recordingsPath: string;
+  whisperModel: 'tiny' | 'base' | 'small' | 'medium' | 'large';
+  language: string;
+  exportFormat: 'txt' | 'srt' | 'vtt' | 'json';
+  sampleRate: number;
+  theme: 'light' | 'dark';
+}
+
+interface ConfigResult {
+  success: boolean;
+  config?: AppConfig;
+  error?: string;
+}
+
+interface DirectorySelectResult {
+  success: boolean;
+  path?: string;
+  canceled?: boolean;
   error?: string;
 }

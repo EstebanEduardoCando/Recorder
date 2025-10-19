@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react'
 import './App.css'
+import AudioPlayer from './components/AudioPlayer'
+import Settings from './components/Settings'
 
 function App() {
   const [isRecording, setIsRecording] = useState(false)
@@ -10,6 +12,8 @@ function App() {
   const [transcriptionProgress, setTranscriptionProgress] = useState(0)
   const [statusMessage, setStatusMessage] = useState('Listo para grabar')
   const [error, setError] = useState<string | null>(null)
+  const [showSettings, setShowSettings] = useState(false)
+  const [config, setConfig] = useState<AppConfig | null>(null)
 
   useEffect(() => {
     // Verificar que electronAPI esté disponible
@@ -19,12 +23,26 @@ function App() {
       return
     }
 
+    // Cargar configuración
+    loadConfig()
+
     // Escuchar progreso de transcripción
     window.electronAPI.onTranscriptionProgress((data) => {
       setTranscriptionProgress(data.progress)
       setStatusMessage(data.status)
     })
   }, [])
+
+  const loadConfig = async () => {
+    try {
+      const result = await window.electronAPI.getConfig()
+      if (result.success && result.config) {
+        setConfig(result.config)
+      }
+    } catch (err) {
+      console.error('Error loading config:', err)
+    }
+  }
 
   const handleStartRecording = async () => {
     try {
@@ -37,7 +55,7 @@ function App() {
       setStatusMessage('Iniciando grabación...')
 
       const result = await window.electronAPI.startRecording({
-        sampleRate: 16000,
+        sampleRate: config?.sampleRate || 16000,
         channels: 1,
         format: 'wav'
       })
@@ -118,7 +136,8 @@ function App() {
       setError(null)
 
       // Inicializar Whisper si no está listo
-      const initResult = await window.electronAPI.initializeWhisper('base')
+      const modelName = config?.whisperModel || 'base'
+      const initResult = await window.electronAPI.initializeWhisper(modelName)
 
       if (!initResult.success) {
         throw new Error(initResult.error || 'No se pudo inicializar Whisper')
@@ -126,8 +145,9 @@ function App() {
 
       setStatusMessage('Transcribiendo...')
 
+      const language = config?.language === 'auto' ? undefined : config?.language
       const result = await window.electronAPI.transcribeAudio(audioPath, {
-        language: 'es'
+        language: language || 'es'
       })
 
       if (result.success) {
@@ -186,11 +206,27 @@ function App() {
     }
   }
 
+  const handleSettingsClose = () => {
+    setShowSettings(false)
+    loadConfig() // Recargar configuración al cerrar
+  }
+
   return (
     <div className="app">
       <header className="app-header">
-        <h1>Recorder</h1>
-        <p>Grabación y Transcripción Local de Reuniones</p>
+        <div className="header-content">
+          <div>
+            <h1>Recorder</h1>
+            <p>Grabación y Transcripción Local de Reuniones</p>
+          </div>
+          <button
+            className="btn-settings"
+            onClick={() => setShowSettings(true)}
+            title="Configuración"
+          >
+            ⚙️
+          </button>
+        </div>
       </header>
 
       <main className="app-main">
@@ -239,6 +275,10 @@ function App() {
           )}
         </div>
 
+        {recordingPath && !isRecording && (
+          <AudioPlayer audioPath={recordingPath} />
+        )}
+
         {transcription && transcription.text && (
           <div className="transcription-section">
             <div className="transcription-header">
@@ -273,8 +313,10 @@ function App() {
       </main>
 
       <footer className="app-footer">
-        <p>v0.1.0 - MVP con Whisper AI</p>
+        <p>v0.2.0 - MVP con Whisper AI + Reproductor + Configuración</p>
       </footer>
+
+      {showSettings && <Settings onClose={handleSettingsClose} />}
     </div>
   )
 }

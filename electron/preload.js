@@ -21,6 +21,15 @@ contextBridge.exposeInMainWorld('electronAPI', {
   exportTranscriptionSRT: (transcription, outputPath) => ipcRenderer.invoke('export-transcription-srt', transcription, outputPath),
   downloadWhisperModel: (modelName) => ipcRenderer.invoke('download-whisper-model', modelName),
 
+  // Configuration APIs
+  getConfig: () => ipcRenderer.invoke('get-config'),
+  updateConfig: (updates) => ipcRenderer.invoke('update-config', updates),
+  resetConfig: () => ipcRenderer.invoke('reset-config'),
+  selectDirectory: (defaultPath) => ipcRenderer.invoke('select-directory', defaultPath),
+
+  // File system APIs
+  openFile: (filePath) => ipcRenderer.invoke('open-file', filePath),
+
   // Listeners para eventos
   onRecordingProgress: (callback) => {
     ipcRenderer.on('recording-progress', (_, data) => callback(data));

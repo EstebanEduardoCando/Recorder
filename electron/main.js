@@ -1,23 +1,31 @@
-const { app, BrowserWindow, ipcMain } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const path = require('path');
 require('dotenv').config();
 
-const audioRecorder = require('./services/audioRecorder');
+// Cargar servicios de forma diferida para evitar problemas con app.getPath()
+let audioRecorder;
+let configService;
+let transcriptionService;
 
-// Seleccionar servicio de transcripción:
-// 1. OpenAI API (si hay API key)
-// 2. Whisper Local con @fugood/whisper.node (binarios precompilados)
-const useOpenAI = !!process.env.OPENAI_API_KEY;
-const transcriptionService = useOpenAI
-  ? require('./services/transcriptionServiceOpenAI')
-  : require('./services/transcriptionServiceLocal'); // Usar whisper local con binarios precompilados
+function initializeServices() {
+  audioRecorder = require('./services/audioRecorder');
+  configService = require('./services/configService');
 
-console.log(`\n🎙️ Servicio de transcripción: ${useOpenAI ? 'OpenAI Whisper API' : 'Whisper Local (offline)'}`);
-if (useOpenAI) {
-  console.log('✓ OpenAI API Key detectada');
-} else {
-  console.log('✓ Usando @fugood/whisper.node (binarios precompilados)');
-  console.log('✓ Transcripción 100% local y privada');
+  // Seleccionar servicio de transcripción:
+  // 1. OpenAI API (si hay API key)
+  // 2. Whisper Local con @fugood/whisper.node (binarios precompilados)
+  const useOpenAI = !!process.env.OPENAI_API_KEY;
+  transcriptionService = useOpenAI
+    ? require('./services/transcriptionServiceOpenAI')
+    : require('./services/transcriptionServiceLocal'); // Usar whisper local con binarios precompilados
+
+  console.log(`\n🎙️ Servicio de transcripción: ${useOpenAI ? 'OpenAI Whisper API' : 'Whisper Local (offline)'}`);
+  if (useOpenAI) {
+    console.log('✓ OpenAI API Key detectada');
+  } else {
+    console.log('✓ Usando @fugood/whisper.node (binarios precompilados)');
+    console.log('✓ Transcripción 100% local y privada');
+  }
 }
 
 let mainWindow;
@@ -69,6 +77,9 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
+  // Inicializar servicios después de que app esté listo
+  initializeServices();
+
   createWindow();
 
   app.on('activate', () => {
@@ -90,7 +101,7 @@ ipcMain.handle('get-app-path', () => {
 });
 
 ipcMain.handle('get-recordings-path', () => {
-  return path.join(app.getPath('userData'), 'recordings');
+  return configService.getRecordingsPath();
 });
 
 // IPC Handlers - Recording
@@ -206,6 +217,67 @@ ipcMain.handle('download-whisper-model', async (event, modelName) => {
     return result;
   } catch (error) {
     console.error('Error en download-whisper-model:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+// IPC Handlers - Configuration
+ipcMain.handle('get-config', () => {
+  try {
+    return { success: true, config: configService.getConfig() };
+  } catch (error) {
+    console.error('Error en get-config:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('update-config', (_event, updates) => {
+  try {
+    const success = configService.update(updates);
+    return { success, config: configService.getConfig() };
+  } catch (error) {
+    console.error('Error en update-config:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('reset-config', () => {
+  try {
+    const success = configService.reset();
+    return { success, config: configService.getConfig() };
+  } catch (error) {
+    console.error('Error en reset-config:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('select-directory', async (_event, defaultPath) => {
+  try {
+    const result = await dialog.showOpenDialog(mainWindow, {
+      properties: ['openDirectory', 'createDirectory'],
+      defaultPath: defaultPath || app.getPath('documents'),
+      title: 'Seleccionar carpeta para grabaciones'
+    });
+
+    if (!result.canceled && result.filePaths.length > 0) {
+      return { success: true, path: result.filePaths[0] };
+    }
+
+    return { success: false, canceled: true };
+  } catch (error) {
+    console.error('Error en select-directory:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+// IPC Handler - Open file in system
+ipcMain.handle('open-file', async (_event, filePath) => {
+  try {
+    const { shell } = require('electron');
+    await shell.openPath(filePath);
+    return { success: true };
+  } catch (error) {
+    console.error('Error en open-file:', error);
     return { success: false, error: error.message };
   }
 });

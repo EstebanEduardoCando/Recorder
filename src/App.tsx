@@ -20,6 +20,11 @@ function App() {
   const [showSettings, setShowSettings] = useState(false)
   const [config, setConfig] = useState<AppConfig | null>(null)
 
+  // Estados para estimación y contador
+  const [estimation, setEstimation] = useState<TranscriptionEstimation | null>(null)
+  const [elapsedTime, setElapsedTime] = useState(0)
+  const [startTime, setStartTime] = useState<number | null>(null)
+
   useEffect(() => {
     // Verificar que electronAPI esté disponible
     if (!window.electronAPI) {
@@ -37,6 +42,23 @@ function App() {
       setStatusMessage(data.status)
     })
   }, [])
+
+  // Efecto para contador de tiempo transcurrido
+  useEffect(() => {
+    let interval: NodeJS.Timeout | null = null
+
+    if (isTranscribing && startTime) {
+      interval = setInterval(() => {
+        setElapsedTime(Math.floor((Date.now() - startTime) / 1000))
+      }, 1000)
+    } else {
+      setElapsedTime(0)
+    }
+
+    return () => {
+      if (interval) clearInterval(interval)
+    }
+  }, [isTranscribing, startTime])
 
   const loadConfig = async () => {
     try {
@@ -158,21 +180,24 @@ function App() {
       setIsTranscribing(true)
       setTranscriptionProgress(0)
       setError(null)
+      setEstimation(null)
+      setElapsedTime(0)
 
       // Obtener estimación de tiempo
       setStatusMessage('Calculando tiempo estimado...')
       const estimationResult = await window.electronAPI.estimateWithSystemConfig(audioPath)
 
       if (estimationResult.success && estimationResult.estimation) {
-        const est = estimationResult.estimation
-        setStatusMessage(
-          `⏱️ Estimado: ${est.estimatedFormatted} (${est.minFormatted} - ${est.maxFormatted}) | ${est.message}`
-        )
+        // Guardar la estimación para mostrarla durante todo el proceso
+        setEstimation(estimationResult.estimation)
+        setStatusMessage('Estimación lista')
 
         // Esperar 2 segundos para que el usuario vea la estimación
         await new Promise(resolve => setTimeout(resolve, 2000))
       }
 
+      // Iniciar el contador de tiempo
+      setStartTime(Date.now())
       setStatusMessage('Inicializando Whisper...')
 
       // Inicializar Whisper si no está listo
@@ -211,6 +236,8 @@ function App() {
       }
     } finally {
       setIsTranscribing(false)
+      setStartTime(null)
+      // No limpiar la estimación aquí, dejarla visible para comparar
     }
   }
 
@@ -341,6 +368,48 @@ function App() {
 
         <div className="status">
           <p>{statusMessage}</p>
+
+          {/* Mostrar información de estimación durante la transcripción */}
+          {estimation && isTranscribing && (
+            <div className="estimation-info">
+              <div className="estimation-row">
+                <span className="estimation-label">Audio:</span>
+                <span className="estimation-value">{estimation.audioDurationFormatted}</span>
+              </div>
+              <div className="estimation-row">
+                <span className="estimation-label">Tiempo transcurrido:</span>
+                <span className="estimation-value elapsed-time">{formatTime(elapsedTime)}</span>
+              </div>
+              <div className="estimation-row">
+                <span className="estimation-label">Tiempo estimado:</span>
+                <span className="estimation-value">
+                  {estimation.estimatedFormatted}
+                  <span className="estimation-range"> ({estimation.minFormatted} - {estimation.maxFormatted})</span>
+                </span>
+              </div>
+              <div className="estimation-row">
+                <span className="estimation-label">Tiempo restante:</span>
+                <span className="estimation-value remaining-time">
+                  {elapsedTime < estimation.maxSeconds
+                    ? `~${formatTime(Math.max(0, estimation.estimatedSeconds - elapsedTime))}`
+                    : 'Finalizando...'}
+                </span>
+              </div>
+              <div className="estimation-row backend-info">
+                <span className="estimation-label">Backend:</span>
+                <span className="estimation-value">{estimation.message}</span>
+              </div>
+            </div>
+          )}
+
+          {/* Mostrar estimación después de completar */}
+          {estimation && !isTranscribing && transcription && (
+            <div className="estimation-summary">
+              <span className="summary-icon">✓</span>
+              <span>Completado en {formatTime(elapsedTime)} (estimado: {estimation.estimatedFormatted})</span>
+            </div>
+          )}
+
           {isTranscribing && (
             <div className="progress-bar">
               <div

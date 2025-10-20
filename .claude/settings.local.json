@@ -39,7 +39,10 @@
       "Bash(findstr :5176)",
       "Bash(findstr :5177)",
       "Bash(findstr :5178)",
-      "Bash(powershell -Command \"Get-Process -Id 16296,22828,24236,36460,32448,28476 -ErrorAction SilentlyContinue | Stop-Process -Force\")"
+      "Bash(powershell -Command \"Get-Process -Id 16296,22828,24236,36460,32448,28476 -ErrorAction SilentlyContinue | Stop-Process -Force\")",
+      "Bash(cmd /c \"dir /s /b *.md 2>nul\")",
+      "Bash(findstr /v \"node_modules\")",
+      "Bash(findstr /v \"dist\")"
     ],
     "deny": [],
     "ask": []

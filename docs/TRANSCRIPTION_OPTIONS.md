@@ -1,82 +1,57 @@
 # Opciones de Transcripción
 
-Este documento explica las diferentes opciones para habilitar la transcripción en la aplicación Recorder.
+Este documento explica cómo configurar la transcripción en Recorder.
 
-## Opción 1: Whisper Local (nodejs-whisper) - RECOMENDADO
+## Opción 1: Whisper Local (Predeterminado) - RECOMENDADO
 
 ✅ **Ventajas:**
 - 100% privado - ningún dato sale de tu computadora
 - Gratis - sin costos recurrentes
 - Funciona offline
+- Sin compilación necesaria - binarios precompilados
 - Soporte para múltiples idiomas
 
 ❌ **Desventajas:**
-- Requiere compilar C++ (Visual Studio Build Tools)
 - Descarga inicial del modelo (~142MB para 'base')
 - Más lento en computadoras antiguas
 
-### Pasos de Instalación:
+### Instalación
 
-#### Windows:
-
-1. **Instalar Visual Studio Build Tools 2022:**
-   - Descarga: https://visualstudio.microsoft.com/downloads/
-   - Instala "Build Tools for Visual Studio 2022"
-   - Selecciona "Desktop development with C++"
-   - Tamaño: ~7GB
-   - Tiempo: 20-30 minutos
-
-2. **Reiniciar la terminal/VSCode**
-
-3. **Compilar whisper.cpp:**
-   ```bash
-   cd node_modules/nodejs-whisper/cpp/whisper.cpp
-   mkdir build
-   cd build
-   cmake ..
-   cmake --build . --config Release
-   ```
-
-4. **Verificar:**
-   ```bash
-   npm run test:transcription
-   ```
-
-#### macOS:
+**¡Ya está instalado!** El paquete `@fugood/whisper.node` viene con binarios precompilados.
 
 ```bash
-# Instalar herramientas de desarrollo
-xcode-select --install
-
-# Compilar whisper.cpp
-cd node_modules/nodejs-whisper/cpp/whisper.cpp
-mkdir build && cd build
-cmake ..
-cmake --build . --config Release
+npm install  # Ya incluye @fugood/whisper.node
 ```
 
-#### Linux:
+**Primera transcripción:**
+- Descargará automáticamente el modelo seleccionado
+- Convierte audio a WAV 16kHz automáticamente
+- No requiere configuración adicional
 
-```bash
-# Instalar dependencias
-sudo apt-get install build-essential cmake
+### Modelos Disponibles
 
-# Compilar whisper.cpp
-cd node_modules/nodejs-whisper/cpp/whisper.cpp
-mkdir build && cd build
-cmake ..
-cmake --build . --config Release
-```
+| Modelo | Tamaño | Velocidad | Precisión |
+|--------|--------|-----------|-----------|
+| tiny   | ~75MB  | Rápido    | Básica    |
+| base   | ~142MB | Media     | Buena (predeterminado) |
+| small  | ~466MB | Lenta     | Muy buena |
+| medium | ~1.5GB | Muy lenta | Excelente |
+| large  | ~2.9GB | Lentísima | Máxima    |
+
+**Cambiar modelo:**
+1. Abre Configuración (⚙️) en la aplicación
+2. Selecciona "Modelo de Whisper"
+3. Guarda cambios
+4. La próxima transcripción usará el nuevo modelo
 
 ---
 
-## Opción 2: OpenAI Whisper API - MÁS FÁCIL
+## Opción 2: OpenAI Whisper API - MÁS RÁPIDO
 
 ✅ **Ventajas:**
-- Sin compilación necesaria
-- Funciona inmediatamente
 - Más rápido y preciso
 - Sin requisitos de hardware
+- Sin descarga de modelos
 
 ❌ **Desventajas:**
 - Requiere API key de OpenAI
@@ -84,12 +59,11 @@ cmake --build . --config Release
 - Requiere internet
 - Los archivos se envían a OpenAI
 
-### Pasos de Instalación:
+### Instalación
 
 1. **Obtener API Key:**
-   - Ve a: https://platform.openai.com/api-keys
-   - Crea una cuenta si no tienes
-   - Genera una nueva API key
+   - https://platform.openai.com/api-keys
+   - Crea una cuenta y genera una API key
    - Copia la key (empieza con `sk-...`)
 
 2. **Instalar dependencia:**
@@ -97,98 +71,72 @@ cmake --build . --config Release
    npm install form-data
    ```
 
-3. **Configurar la aplicación:**
+3. **Configurar `.env`:**
 
-   Edita `electron/main.js` y cambia la línea:
-   ```javascript
-   const transcriptionService = require('./services/transcriptionService');
-   ```
-
-   Por:
-   ```javascript
-   const transcriptionService = require('./services/transcriptionServiceOpenAI');
-
-   // Configurar API key
-   transcriptionService.setApiKey('tu-api-key-aqui');
-   // O usar variable de entorno:
-   // transcriptionService.setApiKey(process.env.OPENAI_API_KEY);
-   ```
-
-4. **Probar:**
-   ```bash
-   npm run dev
-   ```
-
-### Usar Variable de Entorno (Más Seguro):
-
-1. Crea un archivo `.env` en la raíz del proyecto:
+   Edita o crea el archivo `.env` en la raíz del proyecto:
    ```
    OPENAI_API_KEY=sk-tu-api-key-aqui
    ```
 
-2. Instala dotenv:
+4. **Reiniciar aplicación:**
    ```bash
-   npm install dotenv
+   npm run dev
    ```
 
-3. En `electron/main.js`, al inicio:
-   ```javascript
-   require('dotenv').config();
-   const transcriptionService = require('./services/transcriptionServiceOpenAI');
-   ```
+La aplicación detecta automáticamente la presencia de la API key y usa OpenAI en lugar de Whisper local.
 
 ---
 
-## Opción 3: Usar Servicio Externo (Manual)
+## Comparación
 
-Si prefieres no configurar ninguna de las opciones anteriores:
-
-1. **Graba el audio** con la aplicación (esto funciona perfectamente)
-
-2. **Encuentra el archivo** en:
-   - Windows: `C:\Users\<TU_USUARIO>\AppData\Roaming\recorder\recordings\`
-   - macOS: `~/Library/Application Support/recorder/recordings/`
-   - Linux: `~/.config/recorder/recordings/`
-
-3. **Transcribe con servicios online:**
-   - [OpenAI Whisper Playground](https://platform.openai.com/playground)
-   - [Happy Scribe](https://www.happyscribe.com/)
-   - [Otter.ai](https://otter.ai/)
-   - [Trint](https://trint.com/)
-
----
-
-## Comparación Rápida
-
-| Característica | nodejs-whisper (Local) | OpenAI API | Manual |
-|---|---|---|---|
-| **Privacidad** | ✅ Total | ❌ Se envía a OpenAI | ⚠️ Depende del servicio |
-| **Costo** | ✅ Gratis | ⚠️ ~$0.006/min | ⚠️ Varía |
-| **Offline** | ✅ Sí | ❌ No | ❌ No |
-| **Setup** | ❌ Complejo | ✅ Fácil | ✅ Muy fácil |
-| **Velocidad** | ⚠️ Media | ✅ Rápida | ⚠️ Manual |
-| **Precisión** | ✅ Buena | ✅ Excelente | ✅ Varía |
+| Característica | Whisper Local | OpenAI API |
+|---|---|---|
+| **Privacidad** | ✅ Total | ❌ Se envía a OpenAI |
+| **Costo** | ✅ Gratis | ⚠️ ~$0.006/min |
+| **Offline** | ✅ Sí | ❌ No |
+| **Setup** | ✅ Fácil (sin compilación) | ✅ Fácil |
+| **Velocidad** | ⚠️ Media | ✅ Rápida |
+| **Precisión** | ✅ Buena | ✅ Excelente |
 
 ---
 
 ## Recomendación
 
-- **Para uso personal/privado:** Opción 1 (nodejs-whisper local)
-- **Para pruebas rápidas:** Opción 2 (OpenAI API)
-- **Para uso ocasional:** Opción 3 (Manual)
+- **Para uso personal/privado:** Opción 1 (Whisper local)
+- **Para uso profesional con presupuesto:** Opción 2 (OpenAI API)
 
 ---
 
-## Verificar que la Transcripción Funciona
+## Verificar que Funciona
 
-Después de configurar cualquier opción:
+1. Ejecuta la aplicación:
+   ```bash
+   npm run dev
+   ```
 
-```bash
-# Ejecutar test de transcripción
-npm run test:transcription
+2. Graba un audio corto (10-15 segundos)
 
-# O ejecutar la aplicación completa
-npm run dev
-```
+3. Detén la grabación
 
-Graba algo, detén la grabación y la transcripción debería iniciarse automáticamente.
+4. La transcripción debería iniciar automáticamente:
+   - **Whisper Local:** Verás "Descargando modelo..." la primera vez
+   - **OpenAI API:** Será inmediato
+
+---
+
+## Solución de Problemas
+
+### "Error al transcribir" con Whisper Local
+- Verifica conexión a internet (primera vez para descargar modelo)
+- Verifica espacio en disco (~142MB mínimo para modelo base)
+- Revisa logs en consola del desarrollador
+
+### "API key inválida" con OpenAI
+- Verifica que la API key en `.env` sea correcta
+- Verifica que empiece con `sk-`
+- Verifica saldo en tu cuenta OpenAI
+
+### Transcripción muy lenta
+- Usa modelo más pequeño (`tiny` en lugar de `base`)
+- Considera usar OpenAI API
+- Verifica uso de CPU/RAM durante transcripción

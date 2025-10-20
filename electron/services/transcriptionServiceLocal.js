@@ -206,15 +206,16 @@ class TranscriptionServiceLocal {
       // Inicializar contexto de Whisper
       console.log('Llamando a initWhisper con configuración:', {
         model: this.modelPath,
-        useGpu: false
+        useGpu: true
       });
 
       // Probar diferentes nombres de parámetros según la documentación
       // La librería puede esperar 'filePath' en lugar de 'model'
       this.whisperContext = await initWhisper({
         filePath: this.modelPath,  // Intentar con filePath
-        useGpu: false,
-      });
+        useGpu: true,
+        gpu_device: 0 
+      }, 'cuda');
 
       console.log('✓ Whisper inicializado correctamente');
 
@@ -273,13 +274,46 @@ class TranscriptionServiceLocal {
         onProgress({ progress: 30, status: 'Transcribiendo...' });
       }
 
-      // Transcribir usando whisper.node
-      const { stop, promise } = this.whisperContext.transcribeFile(audioPath, {
+      // Cargar configuración optimizada
+      const configService = require('./configService');
+      const appConfig = configService.getConfig();
+
+      // Transcribir usando whisper.node con parámetros optimizados
+      const { stop, promise} = this.whisperContext.transcribeFile(audioPath, {
+        // Idioma y detección
         language: language === 'auto' ? undefined : language,
-        temperature: 0.0,
-        maxLen: 0,
-        splitOnWord: true,
-        tokenTimestamps: true,
+
+        // Parámetros de calidad optimizados para GPU
+        temperature: appConfig.temperature || 0.0,           // Más determinista
+        beam_size: appConfig.beamSize || 3,                  // Balance calidad/velocidad
+        best_of: appConfig.bestOf || 3,                      // Candidatos a considerar
+
+        // Control de threads (importante para CPU, GPU lo ignora)
+        n_threads: appConfig.nThreads || 8,
+
+        // Timestamps y segmentación
+        token_timestamps: true,                               // Timestamps detallados
+        split_on_word: appConfig.splitOnWord !== false,      // Dividir por palabras
+        max_len: appConfig.maxSegmentLength || 0,            // Longitud máxima de segmento
+
+        // Umbrales de calidad
+        entropy_thold: appConfig.entropyThold || 2.4,        // Filtro de calidad
+        logprob_thold: appConfig.logprobThold || -1.0,       // Filtro de confianza
+        no_speech_thold: appConfig.noSpeechThold || 0.6,     // Detección de silencio
+
+        // Supresión de tokens no deseados
+        suppress_blank: appConfig.suppressBlank !== false,    // Suprimir blancos
+        suppress_non_speech_tokens: true,                     // Suprimir ruido
+
+        // Prompt inicial si está configurado
+        initial_prompt: appConfig.initialPrompt || undefined,
+
+        // Contexto
+        no_context: false,                                    // Usar contexto previo
+        single_segment: false,                                // Múltiples segmentos
+
+        // Detección de idioma
+        detect_language: language === 'auto' || appConfig.detectLanguage,
       });
 
       const result = await promise;

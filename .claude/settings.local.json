@@ -1,15 +1,12 @@
 {
   "permissions": {
     "allow": [
-      "Bash(powershell -Command \"Get-ChildItem -Path ''C:\\Users\\ACER NITRO V15\\AppData\\Roaming\\recorder\\models\\'' | Select-Object Name, Length\")",
-      "Bash(powershell -Command \"Start-Sleep -Seconds 10\")",
-      "Bash(npx electron test-model-validation.js)",
-      "Bash(powershell -Command \"Start-Sleep -Seconds 5\")",
-      "Bash(node test-validation-simple.js)",
-      "Bash(del \"C:\\Users\\ACER NITRO V15\\AppData\\Roaming\\recorder\\models\\ggml-large.bin\")",
-      "Bash(powershell -Command \"Remove-Item ''C:\\Users\\ACER NITRO V15\\AppData\\Roaming\\recorder\\models\\ggml-large.bin'' -Force\")",
-      "Bash(powershell -Command \"Remove-Item test-model-validation.js, test-validation-simple.js -Force -ErrorAction SilentlyContinue\")",
-      "Bash(npm run type-check)"
+      "Bash(git push origin master)",
+      "Bash(find node_modules/@fugood/whisper.node/whisper.cpp -name \"*.h\" -exec grep -l \"struct whisper\" {})",
+      "Bash(wmic cpu get name,numberofcores,numberoflogicalprocessors)",
+      "Bash(powershell -Command \"Get-CimInstance -ClassName Win32_Processor | Select-Object Name, NumberOfCores, NumberOfLogicalProcessors\")",
+      "Bash(powershell -Command \"Get-CimInstance -ClassName Win32_VideoController | Select-Object Name, AdapterRAM\")",
+      "Bash(nvidia-smi)"
     ],
     "deny": [],
     "ask": []

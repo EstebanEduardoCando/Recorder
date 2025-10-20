@@ -147,6 +147,22 @@ interface AppConfig {
   sampleRate: number;
   audioSource: string;
   theme: 'light' | 'dark';
+
+  // Whisper Advanced Options
+  useGpu: boolean;
+  gpuBackend: 'default' | 'cuda' | 'vulkan';
+  nThreads: number;
+  beamSize: number;
+  bestOf: number;
+  temperature: number;
+  entropyThold: number;
+  logprobThold: number;
+  noSpeechThold: number;
+  initialPrompt: string;
+  maxSegmentLength: number;
+  splitOnWord: boolean;
+  suppressBlank: boolean;
+  detectLanguage: boolean;
 }
 
 interface ConfigResult {

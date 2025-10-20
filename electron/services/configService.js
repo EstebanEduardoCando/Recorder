@@ -24,7 +24,23 @@ class ConfigService {
       exportFormat: 'txt', // txt, srt, vtt, json
       sampleRate: 44100,
       audioSource: '', // ID del dispositivo de audio seleccionado (vacío = predeterminado)
-      theme: 'light'
+      theme: 'light',
+
+      // Whisper Advanced Options
+      useGpu: true,              // Usar aceleración GPU
+      gpuBackend: 'cuda',        // 'default', 'cuda', 'vulkan'
+      nThreads: 8,               // Número de threads CPU (0 = auto)
+      beamSize: 3,               // Tamaño del beam search (1-10)
+      bestOf: 3,                 // Número de candidatos (1-10)
+      temperature: 0.0,          // Temperatura de sampling (0.0-1.0)
+      entropyThold: 2.4,         // Umbral de entropía para calidad
+      logprobThold: -1.0,        // Umbral de log-probabilidad
+      noSpeechThold: 0.6,        // Umbral de detección de no-habla
+      initialPrompt: '',         // Prompt inicial personalizado
+      maxSegmentLength: 0,       // Longitud máxima de segmento (0 = auto)
+      splitOnWord: true,         // Dividir en palabras vs tokens
+      suppressBlank: true,       // Suprimir tokens en blanco
+      detectLanguage: false      // Auto-detectar idioma
     };
     this.config = this.loadConfig();
     this.initialized = true;

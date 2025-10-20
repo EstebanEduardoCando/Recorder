@@ -15,6 +15,16 @@ class TranscriptionServiceLocal {
     this.whisperContext = null;
     this.modelName = 'base';
     this.modelPath = null;
+
+    // Tamaños mínimos esperados para cada modelo (en bytes)
+    // Estos son valores aproximados para detectar descargas incompletas
+    this.modelMinSizes = {
+      'tiny': 70 * 1024 * 1024,      // ~70 MB
+      'base': 140 * 1024 * 1024,     // ~140 MB
+      'small': 460 * 1024 * 1024,    // ~460 MB
+      'medium': 1500 * 1024 * 1024,  // ~1.5 GB
+      'large': 2900 * 1024 * 1024,   // ~2.9 GB
+    };
   }
 
   getModelsDir() {
@@ -33,6 +43,41 @@ class TranscriptionServiceLocal {
     }
   }
 
+  /**
+   * Valida si un archivo de modelo tiene el tamaño correcto
+   * @param {string} modelPath - Ruta al archivo del modelo
+   * @param {string} modelName - Nombre del modelo (tiny, base, small, medium, large)
+   * @returns {Promise<boolean>} true si el modelo es válido, false si está corrupto
+   */
+  async validateModelFile(modelPath, modelName) {
+    try {
+      const stats = await fs.stat(modelPath);
+      const fileSize = stats.size;
+      const minSize = this.modelMinSizes[modelName];
+
+      if (!minSize) {
+        console.warn(`⚠️  No se conoce el tamaño mínimo para el modelo ${modelName}, asumiendo válido`);
+        return true;
+      }
+
+      // Verificar que el archivo tenga al menos el 90% del tamaño mínimo esperado
+      const isValid = fileSize >= (minSize * 0.9);
+
+      if (!isValid) {
+        console.error(`❌ Modelo corrupto: ${modelName}`);
+        console.error(`   Tamaño actual: ${(fileSize / 1024 / 1024).toFixed(2)} MB`);
+        console.error(`   Tamaño esperado: ~${(minSize / 1024 / 1024).toFixed(2)} MB`);
+      } else {
+        console.log(`✓ Modelo ${modelName} validado: ${(fileSize / 1024 / 1024).toFixed(2)} MB`);
+      }
+
+      return isValid;
+    } catch (error) {
+      console.error('Error validando modelo:', error);
+      return false;
+    }
+  }
+
   async downloadModel(modelName = 'base') {
     await this.ensureModelsDir();
 
@@ -42,56 +87,95 @@ class TranscriptionServiceLocal {
     // Verificar si ya existe
     try {
       await fs.access(this.modelPath);
-      console.log(`✓ Modelo ${modelName} ya existe en:`, this.modelPath);
-      return this.modelPath;
+      console.log(`ℹ️  Archivo del modelo ${modelName} encontrado, validando...`);
+
+      // Validar que el modelo no esté corrupto
+      const isValid = await this.validateModelFile(this.modelPath, modelName);
+
+      if (isValid) {
+        console.log(`✓ Modelo ${modelName} válido en:`, this.modelPath);
+        return this.modelPath;
+      } else {
+        console.warn(`⚠️  Modelo ${modelName} corrupto, eliminando y re-descargando...`);
+        try {
+          await fs.unlink(this.modelPath);
+          console.log(`✓ Archivo corrupto eliminado`);
+        } catch (unlinkError) {
+          console.error('Error eliminando archivo corrupto:', unlinkError);
+        }
+      }
     } catch {
       // El modelo no existe, descargar
-      console.log(`Descargando modelo ${modelName}...`);
+      console.log(`ℹ️  Modelo ${modelName} no encontrado, descargando...`);
     }
 
     const modelUrl = `https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-${modelName}.bin`;
 
+    console.log(`📥 Descargando desde: ${modelUrl}`);
+
     return new Promise((resolve, reject) => {
       const file = require('fs').createWriteStream(this.modelPath);
+      let downloadedSize = 0;
 
-      https.get(modelUrl, (response) => {
+      const handleResponse = (response) => {
         if (response.statusCode === 302 || response.statusCode === 301) {
           // Seguir redirect
-          https.get(response.headers.location, (redirectResponse) => {
-            const totalSize = parseInt(redirectResponse.headers['content-length'], 10);
-            let downloadedSize = 0;
-
-            redirectResponse.on('data', (chunk) => {
-              downloadedSize += chunk.length;
-              const progress = ((downloadedSize / totalSize) * 100).toFixed(2);
-              process.stdout.write(`\rDescargando: ${progress}% (${(downloadedSize / 1024 / 1024).toFixed(2)} MB)`);
-            });
-
-            redirectResponse.pipe(file);
-
-            file.on('finish', () => {
-              file.close();
-              console.log(`\n✓ Modelo ${modelName} descargado exitosamente`);
-              resolve(this.modelPath);
-            });
-
-            file.on('error', (err) => {
-              fs.unlink(this.modelPath);
-              reject(err);
-            });
-          });
-        } else {
-          response.pipe(file);
-          file.on('finish', () => {
-            file.close();
-            console.log(`✓ Modelo ${modelName} descargado`);
-            resolve(this.modelPath);
-          });
+          console.log(`➡️  Siguiendo redirección a: ${response.headers.location}`);
+          https.get(response.headers.location, handleResponse).on('error', handleError);
+          return;
         }
-      }).on('error', (err) => {
-        fs.unlink(this.modelPath);
-        reject(err);
-      });
+
+        if (response.statusCode !== 200) {
+          file.close();
+          require('fs').unlink(this.modelPath, () => {});
+          reject(new Error(`HTTP ${response.statusCode}: ${response.statusMessage}`));
+          return;
+        }
+
+        const totalSize = parseInt(response.headers['content-length'], 10);
+        console.log(`📦 Tamaño total: ${(totalSize / 1024 / 1024).toFixed(2)} MB`);
+
+        response.on('data', (chunk) => {
+          downloadedSize += chunk.length;
+          const progress = ((downloadedSize / totalSize) * 100).toFixed(2);
+          process.stdout.write(`\r📥 Descargando: ${progress}% (${(downloadedSize / 1024 / 1024).toFixed(2)} MB / ${(totalSize / 1024 / 1024).toFixed(2)} MB)`);
+        });
+
+        response.pipe(file);
+
+        file.on('finish', async () => {
+          file.close();
+          console.log(`\n✓ Descarga completada`);
+
+          // Validar el archivo descargado
+          console.log(`🔍 Validando modelo descargado...`);
+          const isValid = await this.validateModelFile(this.modelPath, modelName);
+
+          if (isValid) {
+            console.log(`✓ Modelo ${modelName} descargado y validado exitosamente`);
+            resolve(this.modelPath);
+          } else {
+            console.error(`❌ El archivo descargado está corrupto`);
+            try {
+              await fs.unlink(this.modelPath);
+            } catch (e) {
+              // Ignorar error al eliminar
+            }
+            reject(new Error(`El modelo descargado está corrupto o incompleto. Por favor, intenta nuevamente.`));
+          }
+        });
+
+        file.on('error', handleError);
+      };
+
+      const handleError = (err) => {
+        file.close();
+        require('fs').unlink(this.modelPath, () => {});
+        console.error(`\n❌ Error durante la descarga:`, err.message);
+        reject(new Error(`Error al descargar el modelo: ${err.message}`));
+      };
+
+      https.get(modelUrl, handleResponse).on('error', handleError);
     });
   }
 
@@ -148,9 +232,29 @@ class TranscriptionServiceLocal {
     }
   }
 
+  /**
+   * Transcribe un archivo de audio (grabación nueva o existente)
+   * @param {string} audioPath - Ruta al archivo de audio
+   * @param {Object} options - Opciones de transcripción
+   * @param {string} options.language - Idioma (default: 'es')
+   * @param {Function} options.onProgress - Callback de progreso
+   * @param {string} options.modelName - Modelo a usar (opcional, usa el actual por defecto)
+   * @returns {Promise<Object>} Resultado de la transcripción
+   */
   async transcribe(audioPath, options = {}) {
-    if (!this.isInitialized) {
-      await this.initialize();
+    const {
+      language = 'es',
+      onProgress = null,
+      modelName = null
+    } = options;
+
+    // Si se especifica un modelo diferente, reinicializar
+    if (modelName && modelName !== this.modelName) {
+      console.log(`🔄 Cambiando a modelo: ${modelName}`);
+      this.isInitialized = false;
+      await this.initialize(modelName);
+    } else if (!this.isInitialized) {
+      await this.initialize(this.modelName || 'base');
     }
 
     // Verificar que el archivo existe
@@ -159,11 +263,6 @@ class TranscriptionServiceLocal {
     } catch {
       throw new Error(`El archivo de audio no existe: ${audioPath}`);
     }
-
-    const {
-      language = 'es',
-      onProgress = null
-    } = options;
 
     try {
       if (onProgress) {
@@ -301,6 +400,131 @@ class TranscriptionServiceLocal {
 
   getCurrentTranscription() {
     return this.currentTranscription;
+  }
+
+  /**
+   * Lista todos los modelos disponibles y sus estados
+   * @returns {Promise<Array>} Lista de modelos con información de descarga
+   */
+  async listModels() {
+    await this.ensureModelsDir();
+    const modelsDir = this.getModelsDir();
+
+    const availableModels = ['tiny', 'base', 'small', 'medium', 'large'];
+    const modelsList = [];
+
+    for (const modelName of availableModels) {
+      const modelFile = `ggml-${modelName}.bin`;
+      const modelPath = path.join(modelsDir, modelFile);
+
+      let downloaded = false;
+      let valid = false;
+      let size = 0;
+      let sizeFormatted = '0 MB';
+
+      try {
+        const stats = await fs.stat(modelPath);
+        downloaded = true;
+        size = stats.size;
+        sizeFormatted = `${(size / 1024 / 1024).toFixed(2)} MB`;
+        valid = await this.validateModelFile(modelPath, modelName);
+      } catch {
+        // Archivo no existe
+      }
+
+      const expectedSize = this.modelMinSizes[modelName];
+      const expectedSizeFormatted = `${(expectedSize / 1024 / 1024).toFixed(0)} MB`;
+
+      modelsList.push({
+        name: modelName,
+        fileName: modelFile,
+        path: modelPath,
+        downloaded,
+        valid,
+        size,
+        sizeFormatted,
+        expectedSize,
+        expectedSizeFormatted
+      });
+    }
+
+    return modelsList;
+  }
+
+  /**
+   * Elimina un modelo específico
+   * @param {string} modelName - Nombre del modelo a eliminar
+   * @returns {Promise<Object>} Resultado de la operación
+   */
+  async deleteModel(modelName) {
+    await this.ensureModelsDir();
+    const modelFile = `ggml-${modelName}.bin`;
+    const modelPath = path.join(this.getModelsDir(), modelFile);
+
+    try {
+      await fs.access(modelPath);
+      await fs.unlink(modelPath);
+
+      console.log(`✓ Modelo ${modelName} eliminado exitosamente`);
+
+      // Si el modelo eliminado era el que estaba inicializado, resetear
+      if (this.isInitialized && this.modelName === modelName) {
+        this.isInitialized = false;
+        this.whisperContext = null;
+        this.modelName = 'base';
+        this.modelPath = null;
+        console.log(`ℹ️  Whisper reiniciado (modelo activo eliminado)`);
+      }
+
+      return {
+        success: true,
+        message: `Modelo ${modelName} eliminado correctamente`
+      };
+    } catch (error) {
+      if (error.code === 'ENOENT') {
+        return {
+          success: false,
+          message: `El modelo ${modelName} no existe`
+        };
+      }
+      throw new Error(`No se pudo eliminar el modelo: ${error.message}`);
+    }
+  }
+
+  /**
+   * Fuerza la descarga de un modelo (elimina si existe y descarga de nuevo)
+   * @param {string} modelName - Nombre del modelo a descargar
+   * @param {Function} onProgress - Callback opcional para progreso
+   * @returns {Promise<Object>} Resultado de la operación
+   */
+  async forceDownloadModel(modelName, onProgress = null) {
+    await this.ensureModelsDir();
+    const modelFile = `ggml-${modelName}.bin`;
+    const modelPath = path.join(this.getModelsDir(), modelFile);
+
+    // Eliminar si existe
+    try {
+      await fs.access(modelPath);
+      await fs.unlink(modelPath);
+      console.log(`✓ Modelo existente eliminado`);
+    } catch {
+      // No existe, continuar
+    }
+
+    // Descargar
+    console.log(`📥 Iniciando descarga de modelo: ${modelName}`);
+
+    try {
+      await this.downloadModel(modelName);
+
+      return {
+        success: true,
+        message: `Modelo ${modelName} descargado correctamente`,
+        path: modelPath
+      };
+    } catch (error) {
+      throw new Error(`No se pudo descargar el modelo: ${error.message}`);
+    }
   }
 }
 

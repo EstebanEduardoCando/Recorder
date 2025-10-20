@@ -341,6 +341,104 @@ class AudioRecorder {
     this.isPaused = false;
     this.startTime = null;
   }
+
+  /**
+   * Renombra una grabación
+   * @param {string} oldPath - Ruta del archivo actual
+   * @param {string} newName - Nuevo nombre (sin extensión)
+   * @returns {Promise<Object>} Resultado con la nueva ruta
+   */
+  async renameRecording(oldPath, newName) {
+    try {
+      // Verificar que el archivo existe
+      await fs.access(oldPath);
+
+      // Obtener la extensión del archivo actual
+      const ext = path.extname(oldPath);
+
+      // Sanitizar el nombre (remover caracteres no válidos)
+      const sanitizedName = newName.replace(/[<>:"/\\|?*]/g, '_').trim();
+
+      if (!sanitizedName) {
+        throw new Error('El nombre no puede estar vacío');
+      }
+
+      // Crear nueva ruta en el mismo directorio
+      const dir = path.dirname(oldPath);
+      const newPath = path.join(dir, `${sanitizedName}${ext}`);
+
+      // Verificar que no exista un archivo con el nuevo nombre
+      try {
+        await fs.access(newPath);
+        throw new Error('Ya existe un archivo con ese nombre');
+      } catch (error) {
+        // Si el archivo no existe (ENOENT), continuamos
+        if (error.code !== 'ENOENT') {
+          throw error;
+        }
+      }
+
+      // Renombrar el archivo
+      await fs.rename(oldPath, newPath);
+
+      console.log(`✓ Archivo renombrado: ${path.basename(oldPath)} → ${path.basename(newPath)}`);
+
+      return {
+        success: true,
+        oldPath,
+        newPath,
+        message: 'Archivo renombrado exitosamente'
+      };
+    } catch (error) {
+      throw new Error(`No se pudo renombrar el archivo: ${error.message}`);
+    }
+  }
+
+  /**
+   * Lista todas las grabaciones en el directorio
+   * @returns {Promise<Array>} Lista de grabaciones con metadata
+   */
+  async listRecordings() {
+    try {
+      await this.ensureRecordingsDir();
+      const recordingsDir = this.getRecordingsDir();
+
+      const files = await fs.readdir(recordingsDir);
+      const audioExtensions = ['.wav', '.mp3', '.m4a', '.flac', '.ogg'];
+
+      const recordings = [];
+
+      for (const file of files) {
+        const ext = path.extname(file).toLowerCase();
+        if (audioExtensions.includes(ext)) {
+          const filePath = path.join(recordingsDir, file);
+
+          try {
+            const stats = await fs.stat(filePath);
+
+            recordings.push({
+              name: file,
+              path: filePath,
+              size: stats.size,
+              sizeFormatted: `${(stats.size / 1024 / 1024).toFixed(2)} MB`,
+              created: stats.birthtime,
+              modified: stats.mtime,
+              extension: ext.substring(1)
+            });
+          } catch (error) {
+            console.error(`Error obteniendo info de ${file}:`, error);
+          }
+        }
+      }
+
+      // Ordenar por fecha de modificación (más reciente primero)
+      recordings.sort((a, b) => b.modified - a.modified);
+
+      return recordings;
+    } catch (error) {
+      throw new Error(`No se pudo listar las grabaciones: ${error.message}`);
+    }
+  }
 }
 
 module.exports = new AudioRecorder();

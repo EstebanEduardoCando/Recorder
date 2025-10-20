@@ -231,6 +231,102 @@ ipcMain.handle('download-whisper-model', async (event, modelName) => {
   }
 });
 
+// IPC Handlers - Model Management
+ipcMain.handle('list-whisper-models', async () => {
+  try {
+    const models = await transcriptionService.listModels();
+    return { success: true, models };
+  } catch (error) {
+    console.error('Error en list-whisper-models:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('delete-whisper-model', async (event, modelName) => {
+  try {
+    const result = await transcriptionService.deleteModel(modelName);
+    return result;
+  } catch (error) {
+    console.error('Error en delete-whisper-model:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('force-download-whisper-model', async (event, modelName) => {
+  try {
+    const result = await transcriptionService.forceDownloadModel(modelName);
+    return result;
+  } catch (error) {
+    console.error('Error en force-download-whisper-model:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+// IPC Handlers - Recording Management
+ipcMain.handle('list-recordings', async () => {
+  try {
+    const recordings = await audioRecorder.listRecordings();
+    return { success: true, recordings };
+  } catch (error) {
+    console.error('Error en list-recordings:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('rename-recording', async (event, oldPath, newName) => {
+  try {
+    const result = await audioRecorder.renameRecording(oldPath, newName);
+    return result;
+  } catch (error) {
+    console.error('Error en rename-recording:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+// IPC Handler - Open file dialog
+ipcMain.handle('open-file-dialog', async (event, options) => {
+  try {
+    const result = await dialog.showOpenDialog(mainWindow, {
+      properties: ['openFile'],
+      filters: [
+        { name: 'Audio Files', extensions: ['wav', 'mp3', 'm4a', 'flac', 'ogg'] },
+        { name: 'All Files', extensions: ['*'] }
+      ],
+      ...options
+    });
+
+    if (result.canceled) {
+      return { success: false, canceled: true };
+    }
+
+    return { success: true, filePath: result.filePaths[0] };
+  } catch (error) {
+    console.error('Error en open-file-dialog:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+// IPC Handler - Prompt for save name
+ipcMain.handle('prompt-save-name', async (event, defaultName) => {
+  try {
+    const result = await dialog.showSaveDialog(mainWindow, {
+      defaultPath: defaultName,
+      filters: [
+        { name: 'Audio Files', extensions: ['wav'] }
+      ]
+    });
+
+    if (result.canceled) {
+      return { success: false, canceled: true };
+    }
+
+    return { success: true, filePath: result.filePath };
+  } catch (error) {
+    console.error('Error en prompt-save-name:', error);
+    return { success: false, error: error.message };
+  }
+});
+
 // IPC Handlers - Configuration
 ipcMain.handle('get-config', () => {
   try {

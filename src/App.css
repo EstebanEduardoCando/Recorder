@@ -57,6 +57,42 @@
   transform: rotate(90deg);
 }
 
+/* Tabs navigation */
+.tabs {
+  display: flex;
+  justify-content: center;
+  gap: 0;
+  background: rgba(0, 0, 0, 0.2);
+  padding: 0;
+  border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+}
+
+.tab {
+  flex: 1;
+  max-width: 300px;
+  padding: 1rem 2rem;
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border-bottom: 3px solid transparent;
+  position: relative;
+}
+
+.tab:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+}
+
+.tab.active {
+  color: white;
+  background: rgba(255, 255, 255, 0.15);
+  border-bottom-color: white;
+}
+
 .app-main {
   flex: 1;
   display: flex;

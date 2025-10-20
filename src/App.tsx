@@ -2,8 +2,13 @@ import { useState, useEffect } from 'react'
 import './App.css'
 import AudioPlayer from './components/AudioPlayer'
 import Settings from './components/Settings'
+import ModelManager from './components/ModelManager'
+import RecordingsManager from './components/RecordingsManager'
+
+type TabType = 'recorder' | 'models' | 'recordings';
 
 function App() {
+  const [activeTab, setActiveTab] = useState<TabType>('recorder')
   const [isRecording, setIsRecording] = useState(false)
   const [isPaused, setIsPaused] = useState(false)
   const [recordingPath, setRecordingPath] = useState<string | null>(null)
@@ -85,13 +90,32 @@ function App() {
       if (result.success) {
         setIsRecording(false)
         setIsPaused(false)
-        setRecordingPath(result.outputPath || null)
-        setStatusMessage(`Grabación guardada (${result.duration}s)`)
+        let finalPath = result.outputPath || null
+
+        // Preguntar si desea renombrar el archivo
+        if (finalPath) {
+          const newName = prompt('¿Desea dar un nombre personalizado a la grabación?\n(Dejar vacío para mantener el nombre automático)')
+
+          if (newName && newName.trim()) {
+            try {
+              const renameResult = await window.electronAPI.renameRecording(finalPath, newName.trim())
+              if (renameResult.success && renameResult.newPath) {
+                finalPath = renameResult.newPath
+                setStatusMessage(`Grabación guardada como: ${newName}`)
+              }
+            } catch (renameError) {
+              console.error('Error al renombrar:', renameError)
+              // Continuar con el nombre original
+            }
+          }
+        }
+
+        setRecordingPath(finalPath)
 
         // Intentar transcripción automática (opcional)
-        if (result.outputPath) {
+        if (finalPath) {
           try {
-            await handleTranscribe(result.outputPath)
+            await handleTranscribe(finalPath)
           } catch (transcriptionError) {
             console.warn('Transcripción no disponible:', transcriptionError)
             setStatusMessage(`Grabación guardada (${result.duration}s) - Transcripción no disponible`)
@@ -212,6 +236,19 @@ function App() {
     loadConfig() // Recargar configuración al cerrar
   }
 
+  const handleSelectRecordingForTranscription = async (audioPath: string) => {
+    // Cambiar a la pestaña de grabadora
+    setActiveTab('recorder')
+
+    // Establecer el path de la grabación y limpiar transcripción anterior
+    setRecordingPath(audioPath)
+    setTranscription(null)
+    setError(null)
+
+    // Iniciar transcripción automáticamente
+    await handleTranscribe(audioPath)
+  }
+
   return (
     <div className="app">
       <header className="app-header">
@@ -230,14 +267,37 @@ function App() {
         </div>
       </header>
 
-      <main className="app-main">
-        {error && (
-          <div className="error-banner">
-            {error}
-          </div>
-        )}
+      <nav className="tabs">
+        <button
+          className={`tab ${activeTab === 'recorder' ? 'active' : ''}`}
+          onClick={() => setActiveTab('recorder')}
+        >
+          🎙️ Grabar
+        </button>
+        <button
+          className={`tab ${activeTab === 'recordings' ? 'active' : ''}`}
+          onClick={() => setActiveTab('recordings')}
+        >
+          📁 Grabaciones
+        </button>
+        <button
+          className={`tab ${activeTab === 'models' ? 'active' : ''}`}
+          onClick={() => setActiveTab('models')}
+        >
+          🤖 Modelos Whisper
+        </button>
+      </nav>
 
-        <div className="recording-controls">
+      <main className="app-main">
+        {activeTab === 'recorder' && (
+          <>
+            {error && (
+              <div className="error-banner">
+                {error}
+              </div>
+            )}
+
+            <div className="recording-controls">
           {!isRecording ? (
             <button
               className="btn-record"
@@ -311,10 +371,20 @@ function App() {
             )}
           </div>
         )}
+          </>
+        )}
+
+        {activeTab === 'recordings' && (
+          <RecordingsManager onSelectRecording={handleSelectRecordingForTranscription} />
+        )}
+
+        {activeTab === 'models' && (
+          <ModelManager />
+        )}
       </main>
 
       <footer className="app-footer">
-        <p>v0.2.0 - MVP con Whisper AI + Reproductor + Configuración</p>
+        <p>v0.3.0 - Gestión de Modelos + Grabaciones + Renombrado</p>
       </footer>
 
       {showSettings && <Settings onClose={handleSettingsClose} />}

@@ -22,6 +22,19 @@ interface Window {
     exportTranscriptionSRT: (transcription: TranscriptionResult, outputPath: string) => Promise<SaveResult>;
     downloadWhisperModel: (modelName: string) => Promise<ModelDownloadResult>;
 
+    // Model Management
+    listWhisperModels: () => Promise<ModelsListResult>;
+    deleteWhisperModel: (modelName: string) => Promise<ModelOperationResult>;
+    forceDownloadWhisperModel: (modelName: string) => Promise<ModelOperationResult>;
+
+    // Recording Management
+    listRecordings: () => Promise<RecordingsListResult>;
+    renameRecording: (oldPath: string, newName: string) => Promise<RenameResult>;
+
+    // File Dialogs
+    openFileDialog: (options?: any) => Promise<FileDialogResult>;
+    promptSaveName: (defaultName: string) => Promise<FileDialogResult>;
+
     // Configuration
     getConfig: () => Promise<ConfigResult>;
     updateConfig: (updates: Partial<AppConfig>) => Promise<ConfigResult>;
@@ -145,6 +158,62 @@ interface ConfigResult {
 interface DirectorySelectResult {
   success: boolean;
   path?: string;
+  canceled?: boolean;
+  error?: string;
+}
+
+interface WhisperModel {
+  name: string;
+  fileName: string;
+  path: string;
+  downloaded: boolean;
+  valid: boolean;
+  size: number;
+  sizeFormatted: string;
+  expectedSize: number;
+  expectedSizeFormatted: string;
+}
+
+interface ModelsListResult {
+  success: boolean;
+  models?: WhisperModel[];
+  error?: string;
+}
+
+interface ModelOperationResult {
+  success: boolean;
+  message: string;
+  path?: string;
+  error?: string;
+}
+
+interface Recording {
+  name: string;
+  path: string;
+  size: number;
+  sizeFormatted: string;
+  created: Date;
+  modified: Date;
+  extension: string;
+}
+
+interface RecordingsListResult {
+  success: boolean;
+  recordings?: Recording[];
+  error?: string;
+}
+
+interface RenameResult {
+  success: boolean;
+  oldPath?: string;
+  newPath?: string;
+  message?: string;
+  error?: string;
+}
+
+interface FileDialogResult {
+  success: boolean;
+  filePath?: string;
   canceled?: boolean;
   error?: string;
 }

@@ -1,0 +1,188 @@
+.model-manager {
+  padding: 20px;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.model-manager-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.model-manager h2 {
+  margin: 0;
+  color: #333;
+}
+
+.btn-refresh {
+  padding: 8px 16px;
+  background: #0066cc;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.btn-refresh:hover {
+  background: #0052a3;
+}
+
+.loading {
+  text-align: center;
+  padding: 40px;
+  color: #666;
+}
+
+.error-message {
+  background: #fee;
+  border: 1px solid #fcc;
+  color: #c33;
+  padding: 12px;
+  border-radius: 4px;
+  margin-bottom: 20px;
+}
+
+.models-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.model-item {
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  transition: box-shadow 0.2s;
+}
+
+.model-item:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.model-item.model-invalid {
+  border-color: #f90;
+  background: #fff9f0;
+}
+
+.model-info {
+  flex: 1;
+}
+
+.model-name-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.model-name-row h3 {
+  margin: 0;
+  font-size: 18px;
+  color: #333;
+  text-transform: capitalize;
+}
+
+.model-status {
+  font-size: 12px;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-weight: 500;
+}
+
+.model-status.downloaded {
+  background: #d4edda;
+  color: #155724;
+}
+
+.model-status.not-downloaded {
+  background: #f8f9fa;
+  color: #6c757d;
+}
+
+.model-description {
+  margin: 0 0 8px 0;
+  color: #666;
+  font-size: 14px;
+}
+
+.model-size {
+  font-size: 13px;
+  color: #888;
+}
+
+.model-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.model-actions button {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s;
+}
+
+.btn-delete {
+  background: #dc3545;
+  color: white;
+}
+
+.btn-delete:hover:not(:disabled) {
+  background: #c82333;
+}
+
+.btn-download {
+  background: #28a745;
+  color: white;
+}
+
+.btn-download:hover:not(:disabled) {
+  background: #218838;
+}
+
+.btn-redownload {
+  background: #ffc107;
+  color: #000;
+}
+
+.btn-redownload:hover:not(:disabled) {
+  background: #e0a800;
+}
+
+.model-actions button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.model-info-box {
+  background: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+  padding: 16px;
+  margin-top: 20px;
+}
+
+.model-info-box p {
+  margin: 8px 0;
+  font-size: 14px;
+  color: #495057;
+}
+
+.model-info-box p:first-child {
+  margin-top: 0;
+}
+
+.model-info-box p:last-child {
+  margin-bottom: 0;
+}

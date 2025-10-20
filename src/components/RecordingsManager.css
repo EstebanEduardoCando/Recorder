@@ -1,0 +1,215 @@
+.recordings-manager {
+  padding: 20px;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.recordings-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.recordings-header h2 {
+  margin: 0;
+  color: #333;
+}
+
+.recordings-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.btn-open-file,
+.btn-refresh {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background 0.2s;
+}
+
+.btn-open-file {
+  background: #28a745;
+  color: white;
+}
+
+.btn-open-file:hover {
+  background: #218838;
+}
+
+.btn-refresh {
+  background: #0066cc;
+  color: white;
+}
+
+.btn-refresh:hover {
+  background: #0052a3;
+}
+
+.loading {
+  text-align: center;
+  padding: 40px;
+  color: #666;
+}
+
+.error-message {
+  background: #fee;
+  border: 1px solid #fcc;
+  color: #c33;
+  padding: 12px;
+  border-radius: 4px;
+  margin-bottom: 20px;
+}
+
+.no-recordings {
+  text-align: center;
+  padding: 60px 20px;
+  color: #666;
+}
+
+.no-recordings p {
+  margin: 8px 0;
+}
+
+.no-recordings .hint {
+  font-size: 14px;
+  color: #999;
+}
+
+.recordings-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.recording-item {
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: box-shadow 0.2s;
+}
+
+.recording-item:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.recording-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.recording-name {
+  font-weight: 500;
+  color: #333;
+  margin-bottom: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recording-metadata {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 13px;
+  color: #888;
+}
+
+.recording-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.recording-actions button {
+  padding: 6px 12px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.2s;
+}
+
+.btn-transcribe {
+  background: #007bff;
+  color: white;
+}
+
+.btn-transcribe:hover {
+  background: #0056b3;
+}
+
+.btn-rename {
+  background: #6c757d;
+  color: white;
+}
+
+.btn-rename:hover {
+  background: #545b62;
+}
+
+/* Rename form */
+.rename-form {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.rename-input {
+  flex: 1;
+  padding: 8px 12px;
+  border: 2px solid #007bff;
+  border-radius: 4px;
+  font-size: 14px;
+  outline: none;
+}
+
+.file-extension {
+  color: #666;
+  font-size: 14px;
+}
+
+.rename-buttons {
+  display: flex;
+  gap: 4px;
+}
+
+.btn-save,
+.btn-cancel {
+  padding: 6px 12px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 16px;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-save {
+  background: #28a745;
+  color: white;
+}
+
+.btn-save:hover {
+  background: #218838;
+}
+
+.btn-cancel {
+  background: #dc3545;
+  color: white;
+}
+
+.btn-cancel:hover {
+  background: #c82333;
+}

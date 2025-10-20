@@ -38,10 +38,12 @@ electron/
     └── transcriptionServiceOpenAI.js   # OpenAI API (opcional)
 
 src/
-├── App.tsx                # Main component
+├── App.tsx                      # Main component con tabs
 └── components/
-    ├── AudioPlayer.tsx    # Reproductor
-    └── Settings.tsx       # Panel configuración
+    ├── AudioPlayer.tsx          # Reproductor
+    ├── Settings.tsx             # Panel configuración
+    ├── ModelManager.tsx         # Gestión de modelos Whisper
+    └── RecordingsManager.tsx    # Gestión de grabaciones
 ```
 
 ### IPC Pattern
@@ -58,23 +60,28 @@ src/
 - `@components/*` → `src/components/*`
 - `@services/*` → `src/services/*`
 
-## Estado Actual (MVP v0.2.0)
+## Estado Actual (MVP v0.3.0)
 
 ✅ **Implementado:**
 1. Grabación audio (micrófono, FFmpeg)
 2. Transcripción local (Whisper con @fugood/whisper.node - binarios precompilados)
 3. Configuración persistente (JSON)
-4. IPC completo (recording, transcription, config)
-5. UI React con reproductor de audio integrado
+4. IPC completo (recording, transcription, config, models, recordings)
+5. UI React con reproductor de audio integrado y navegación por tabs
 6. Panel de configuración (modelo Whisper, idioma, paths, sample rate)
 7. Exportación (TXT, SRT, VTT, JSON)
+8. **Gestión de modelos Whisper** (listar, descargar, eliminar, validar)
+9. **Gestión de grabaciones** (listar, renombrar, transcribir archivos existentes)
+10. **Cargar archivos externos** para transcripción
+11. **Renombrado personalizado** al finalizar grabación (prompt al usuario)
+12. **Validación automática** de modelos corruptos con re-descarga
 
 🚧 **Pendiente:**
-- Dashboard con historial de grabaciones
-- SQLite para metadata
+- SQLite para metadata y búsqueda
 - Captura de audio del sistema (requiere Stereo Mix en Windows o VB-Cable)
-- Visualizador de forma de onda
-- Sincronización playback + transcripción
+- Visualizador de forma de onda en tiempo real
+- Sincronización playback + transcripción con highlighting
+- Historial de transcripciones con búsqueda full-text
 
 ## Notas de Implementación
 

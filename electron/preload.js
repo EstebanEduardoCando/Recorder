@@ -35,6 +35,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   openFileDialog: (options) => ipcRenderer.invoke('open-file-dialog', options),
   promptSaveName: (defaultName) => ipcRenderer.invoke('prompt-save-name', defaultName),
 
+  // Time Estimation APIs
+  estimateTranscriptionTime: (audioPath, options) => ipcRenderer.invoke('estimate-transcription-time', audioPath, options),
+  estimateWithSystemConfig: (audioPath) => ipcRenderer.invoke('estimate-with-system-config', audioPath),
+
   // Configuration APIs
   getConfig: () => ipcRenderer.invoke('get-config'),
   updateConfig: (updates) => ipcRenderer.invoke('update-config', updates),

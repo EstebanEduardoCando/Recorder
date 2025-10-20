@@ -157,8 +157,23 @@ function App() {
     try {
       setIsTranscribing(true)
       setTranscriptionProgress(0)
-      setStatusMessage('Inicializando Whisper...')
       setError(null)
+
+      // Obtener estimación de tiempo
+      setStatusMessage('Calculando tiempo estimado...')
+      const estimationResult = await window.electronAPI.estimateWithSystemConfig(audioPath)
+
+      if (estimationResult.success && estimationResult.estimation) {
+        const est = estimationResult.estimation
+        setStatusMessage(
+          `⏱️ Estimado: ${est.estimatedFormatted} (${est.minFormatted} - ${est.maxFormatted}) | ${est.message}`
+        )
+
+        // Esperar 2 segundos para que el usuario vea la estimación
+        await new Promise(resolve => setTimeout(resolve, 2000))
+      }
+
+      setStatusMessage('Inicializando Whisper...')
 
       // Inicializar Whisper si no está listo
       const modelName = config?.whisperModel || 'base'

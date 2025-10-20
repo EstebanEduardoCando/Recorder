@@ -6,10 +6,12 @@ require('dotenv').config();
 let audioRecorder;
 let configService;
 let transcriptionService;
+let transcriptionEstimator;
 
 function initializeServices() {
   audioRecorder = require('./services/audioRecorder');
   configService = require('./services/configService');
+  transcriptionEstimator = require('./services/transcriptionEstimator');
 
   // Seleccionar servicio de transcripción:
   // 1. OpenAI API (si hay API key)
@@ -279,6 +281,30 @@ ipcMain.handle('rename-recording', async (event, oldPath, newName) => {
     return result;
   } catch (error) {
     console.error('Error en rename-recording:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+// IPC Handler - Estimate transcription time
+ipcMain.handle('estimate-transcription-time', async (event, audioPath, options = {}) => {
+  try {
+    const estimation = await transcriptionEstimator.estimateTranscriptionTime({
+      audioPath,
+      ...options
+    });
+    return { success: true, estimation };
+  } catch (error) {
+    console.error('Error en estimate-transcription-time:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('estimate-with-system-config', async (event, audioPath) => {
+  try {
+    const estimation = await transcriptionEstimator.estimateWithSystemConfig(audioPath);
+    return { success: true, estimation };
+  } catch (error) {
+    console.error('Error en estimate-with-system-config:', error);
     return { success: false, error: error.message };
   }
 });

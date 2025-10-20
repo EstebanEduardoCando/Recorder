@@ -35,6 +35,10 @@ interface Window {
     openFileDialog: (options?: any) => Promise<FileDialogResult>;
     promptSaveName: (defaultName: string) => Promise<FileDialogResult>;
 
+    // Time Estimation
+    estimateTranscriptionTime: (audioPath: string, options?: any) => Promise<EstimationResult>;
+    estimateWithSystemConfig: (audioPath: string) => Promise<EstimationResult>;
+
     // Configuration
     getConfig: () => Promise<ConfigResult>;
     updateConfig: (updates: Partial<AppConfig>) => Promise<ConfigResult>;
@@ -231,5 +235,29 @@ interface FileDialogResult {
   success: boolean;
   filePath?: string;
   canceled?: boolean;
+  error?: string;
+}
+
+interface TranscriptionEstimation {
+  audioDuration: number;
+  audioDurationFormatted: string;
+  estimatedSeconds: number;
+  estimatedFormatted: string;
+  minSeconds: number;
+  minFormatted: string;
+  maxSeconds: number;
+  maxFormatted: string;
+  speedFactor: number;
+  realTimeMultiplier: number;
+  modelName: string;
+  backend: string;
+  useGpu: boolean;
+  beamSize: number;
+  message: string;
+}
+
+interface EstimationResult {
+  success: boolean;
+  estimation?: TranscriptionEstimation;
   error?: string;
 }

@@ -2,7 +2,10 @@ const path = require('path');
 const fs = require('fs').promises;
 const ffmpeg = require('fluent-ffmpeg');
 const ffmpegPath = require('@ffmpeg-installer/ffmpeg').path;
+const { exec } = require('child_process');
+const { promisify } = require('util');
 
+const execPromise = promisify(exec);
 ffmpeg.setFfmpegPath(ffmpegPath);
 
 class AudioRecorder {
@@ -24,6 +27,121 @@ class AudioRecorder {
     return this.recordingsDir;
   }
 
+  /**
+   * Detecta los dispositivos de audio disponibles en el sistema
+   * @returns {Promise<Array>} Lista de dispositivos de audio con su tipo (input/output)
+   */
+  async getAudioDevices() {
+    try {
+      const devices = [];
+
+      if (process.platform === 'win32') {
+        // En Windows, usar FFmpeg con DirectShow para listar dispositivos
+        const { stdout } = await execPromise(`"${ffmpegPath}" -list_devices true -f dshow -i dummy`, {
+          encoding: 'utf8',
+          maxBuffer: 1024 * 1024
+        }).catch(err => {
+          // FFmpeg retorna exit code 1 al listar dispositivos, pero stdout contiene la info
+          return { stdout: err.stdout || '' };
+        });
+
+        // Parsear la salida de FFmpeg
+        const lines = stdout.split('\n');
+        let currentType = null;
+
+        for (const line of lines) {
+          if (line.includes('DirectShow video devices')) {
+            currentType = 'video';
+          } else if (line.includes('DirectShow audio devices')) {
+            currentType = 'audio';
+          } else if (currentType === 'audio' && line.includes('"')) {
+            // Extraer el nombre del dispositivo entre comillas
+            const match = line.match(/"([^"]+)"/);
+            if (match) {
+              const deviceName = match[1];
+              // Detectar si es un dispositivo de entrada o salida
+              const isOutput = deviceName.toLowerCase().includes('stereo mix') ||
+                              deviceName.toLowerCase().includes('mezcla estéreo') ||
+                              deviceName.toLowerCase().includes('what u hear') ||
+                              deviceName.toLowerCase().includes('wave out') ||
+                              deviceName.toLowerCase().includes('loopback');
+
+              devices.push({
+                id: deviceName,
+                name: deviceName,
+                type: isOutput ? 'system' : 'microphone',
+                platform: 'win32'
+              });
+            }
+          }
+        }
+      } else if (process.platform === 'darwin') {
+        // En macOS, usar FFmpeg con AVFoundation
+        const { stdout } = await execPromise(`"${ffmpegPath}" -f avfoundation -list_devices true -i ""`, {
+          encoding: 'utf8'
+        }).catch(err => {
+          return { stdout: err.stdout || '' };
+        });
+
+        const lines = stdout.split('\n');
+        let audioDeviceIndex = 0;
+
+        for (const line of lines) {
+          if (line.includes('AVFoundation audio devices')) {
+            continue;
+          }
+          const match = line.match(/\[AVFoundation.*?\] \[(\d+)\] (.+)/);
+          if (match) {
+            const deviceName = match[2];
+            const isOutput = deviceName.toLowerCase().includes('blackhole') ||
+                            deviceName.toLowerCase().includes('loopback');
+
+            devices.push({
+              id: `:${audioDeviceIndex}`,
+              name: deviceName,
+              type: isOutput ? 'system' : 'microphone',
+              platform: 'darwin'
+            });
+            audioDeviceIndex++;
+          }
+        }
+      } else if (process.platform === 'linux') {
+        // En Linux, usar arecord para listar dispositivos
+        try {
+          const { stdout } = await execPromise('arecord -L');
+          const lines = stdout.split('\n');
+
+          for (const line of lines) {
+            const trimmed = line.trim();
+            if (trimmed && !trimmed.startsWith(' ')) {
+              devices.push({
+                id: trimmed,
+                name: trimmed,
+                type: trimmed.includes('loopback') ? 'system' : 'microphone',
+                platform: 'linux'
+              });
+            }
+          }
+        } catch (error) {
+          console.error('Error listando dispositivos en Linux:', error);
+        }
+      }
+
+      // Agregar opciones especiales
+      devices.unshift({
+        id: 'both',
+        name: 'Micrófono + Audio del Sistema (Mezclado)',
+        type: 'both',
+        platform: process.platform
+      });
+
+      return devices;
+    } catch (error) {
+      console.error('Error detectando dispositivos de audio:', error);
+      return [];
+    }
+  }
+
   async ensureRecordingsDir() {
     const recordingsDir = this.getRecordingsDir();
     try {
@@ -43,7 +161,8 @@ class AudioRecorder {
     const {
       sampleRate = 16000,
       channels = 1,
-      format = 'wav'
+      format = 'wav',
+      audioSource = null // ID del dispositivo de audio seleccionado
     } = config;
 
     // Generar nombre de archivo único
@@ -53,21 +172,33 @@ class AudioRecorder {
 
     return new Promise((resolve, reject) => {
       try {
-        // Usar FFmpeg directamente para grabar desde el micrófono
-        // En Windows, usamos dshow (DirectShow)
-        let inputDevice = 'dshow';
-        let audioSource = 'audio=Micrófono (NVIDIA Broadcast)'; // Tu dispositivo de micrófono
+        let inputDevice, audioInput;
 
-        if (process.platform === 'darwin') {
+        // Configurar dispositivo según la plataforma y la fuente seleccionada
+        if (process.platform === 'win32') {
+          inputDevice = 'dshow';
+
+          if (audioSource && audioSource !== 'both') {
+            // Usar el dispositivo seleccionado
+            audioInput = `audio=${audioSource}`;
+          } else if (audioSource === 'both') {
+            // TODO: Implementar mezcla de micrófono + sistema (requiere filtros complejos)
+            audioInput = 'audio=Micrófono (NVIDIA Broadcast)';
+            console.warn('Mezcla de audio no implementada aún, usando micrófono');
+          } else {
+            // Dispositivo predeterminado
+            audioInput = 'audio=Micrófono (NVIDIA Broadcast)';
+          }
+        } else if (process.platform === 'darwin') {
           inputDevice = 'avfoundation';
-          audioSource = ':0'; // Dispositivo de audio predeterminado en macOS
+          audioInput = audioSource || ':0'; // Dispositivo seleccionado o predeterminado
         } else if (process.platform === 'linux') {
           inputDevice = 'alsa';
-          audioSource = 'default'; // Dispositivo ALSA predeterminado
+          audioInput = audioSource || 'default'; // Dispositivo seleccionado o predeterminado
         }
 
         this.ffmpegCommand = ffmpeg()
-          .input(audioSource)
+          .input(audioInput)
           .inputFormat(inputDevice)
           .audioCodec('pcm_s16le')
           .audioChannels(channels)

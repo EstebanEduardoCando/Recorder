@@ -29,7 +29,17 @@
       "Bash(findstr /i \"\\.bin \\.wav \\.mp3 \\.db\")",
       "Bash(powershell -Command \"Get-ChildItem -Recurse -File | Where-Object { $_Extension -match ''\\.(bin|wav|mp3|db)$'' } | Select-Object FullName, @{Name=''SizeMB'';Expression={[math]::Round($_Length/1MB,2)}} | Format-Table -AutoSize\")",
       "Bash(awk '{print $9}')",
-      "Bash(git add -A)"
+      "Bash(git add -A)",
+      "Bash(npm run dev)",
+      "Bash(timeout /t 10 /nobreak)",
+      "Bash(powershell -Command \"Start-Sleep -Seconds 15\")",
+      "Bash(node -e \"console.log(require(''electron''))\")",
+      "Bash(findstr :5174)",
+      "Bash(findstr :5175)",
+      "Bash(findstr :5176)",
+      "Bash(findstr :5177)",
+      "Bash(findstr :5178)",
+      "Bash(powershell -Command \"Get-Process -Id 16296,22828,24236,36460,32448,28476 -ErrorAction SilentlyContinue | Stop-Process -Force\")"
     ],
     "deny": [],
     "ask": []

@@ -47,7 +47,7 @@ function createWindow() {
   // En desarrollo, cargar desde Vite
   if (process.env.NODE_ENV === 'development' || !app.isPackaged) {
     mainWindow.loadURL('http://localhost:5173');
-    mainWindow.webContents.openDevTools();
+    //mainWindow.webContents.openDevTools();
   } else {
     // En producción, cargar el archivo HTML construido
     mainWindow.loadFile(path.join(__dirname, '../dist/index.html'));
@@ -105,6 +105,16 @@ ipcMain.handle('get-recordings-path', () => {
 });
 
 // IPC Handlers - Recording
+ipcMain.handle('get-audio-devices', async () => {
+  try {
+    const devices = await audioRecorder.getAudioDevices();
+    return { success: true, devices };
+  } catch (error) {
+    console.error('Error en get-audio-devices:', error);
+    return { success: false, error: error.message, devices: [] };
+  }
+});
+
 ipcMain.handle('start-recording', async (event, config) => {
   try {
     const result = await audioRecorder.startRecording(config);
@@ -278,6 +288,17 @@ ipcMain.handle('open-file', async (_event, filePath) => {
     return { success: true };
   } catch (error) {
     console.error('Error en open-file:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('open-external', async (_event, url) => {
+  try {
+    const { shell } = require('electron');
+    await shell.openExternal(url);
+    return { success: true };
+  } catch (error) {
+    console.error('Error en open-external:', error);
     return { success: false, error: error.message };
   }
 });

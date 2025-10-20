@@ -57,7 +57,8 @@ function App() {
       const result = await window.electronAPI.startRecording({
         sampleRate: config?.sampleRate || 16000,
         channels: 1,
-        format: 'wav'
+        format: 'wav',
+        audioSource: config?.audioSource || ''
       })
 
       if (result.success) {

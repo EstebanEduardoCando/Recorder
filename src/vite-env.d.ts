@@ -7,6 +7,7 @@ interface Window {
     getRecordingsPath: () => Promise<string>;
 
     // Recording
+    getAudioDevices: () => Promise<AudioDevicesResult>;
     startRecording: (config?: RecordingConfig) => Promise<RecordingResult>;
     stopRecording: () => Promise<RecordingResult>;
     pauseRecording: () => Promise<RecordingResult>;
@@ -29,6 +30,7 @@ interface Window {
 
     // File system
     openFile: (filePath: string) => Promise<{ success: boolean; error?: string }>;
+    openExternal: (url: string) => Promise<{ success: boolean; error?: string }>;
 
     // Event listeners
     onRecordingProgress: (callback: (data: RecordingProgress) => void) => void;
@@ -36,10 +38,24 @@ interface Window {
   };
 }
 
+interface AudioDevice {
+  id: string;
+  name: string;
+  type: 'microphone' | 'system' | 'both';
+  platform: string;
+}
+
+interface AudioDevicesResult {
+  success: boolean;
+  devices: AudioDevice[];
+  error?: string;
+}
+
 interface RecordingConfig {
   sampleRate?: number;
   channels?: number;
   format?: 'wav' | 'mp3' | 'ogg';
+  audioSource?: string;
 }
 
 interface RecordingResult {
@@ -116,6 +132,7 @@ interface AppConfig {
   language: string;
   exportFormat: 'txt' | 'srt' | 'vtt' | 'json';
   sampleRate: number;
+  audioSource: string;
   theme: 'light' | 'dark';
 }
 

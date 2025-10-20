@@ -35,12 +35,14 @@ const LANGUAGES = [
 
 export default function Settings({ onClose }: SettingsProps) {
   const [config, setConfig] = useState<AppConfig | null>(null);
+  const [audioDevices, setAudioDevices] = useState<AudioDevice[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   useEffect(() => {
     loadConfig();
+    loadAudioDevices();
   }, []);
 
   const loadConfig = async () => {
@@ -56,6 +58,17 @@ export default function Settings({ onClose }: SettingsProps) {
       setMessage({ type: 'error', text: 'Error al cargar configuración' });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadAudioDevices = async () => {
+    try {
+      const result = await window.electronAPI.getAudioDevices();
+      if (result.success && result.devices) {
+        setAudioDevices(result.devices);
+      }
+    } catch (error) {
+      console.error('Error loading audio devices:', error);
     }
   };
 
@@ -251,6 +264,50 @@ export default function Settings({ onClose }: SettingsProps) {
 
           <div className="settings-section">
             <h3>🎙️ Audio</h3>
+            <div className="settings-field">
+              <label htmlFor="audioSource">Fuente de audio</label>
+              <select
+                id="audioSource"
+                value={config.audioSource}
+                onChange={(e) => setConfig({ ...config, audioSource: e.target.value })}
+              >
+                <option value="">Dispositivo predeterminado</option>
+                {audioDevices.map(device => (
+                  <option key={device.id} value={device.id}>
+                    {device.type === 'microphone' ? '🎤' : device.type === 'system' ? '🔊' : '🎧'} {device.name}
+                  </option>
+                ))}
+              </select>
+              <small className="field-hint">
+                Para grabar audio del sistema (reuniones, música, etc.), selecciona un dispositivo de salida (🔊) o "Stereo Mix".
+                {audioDevices.filter(d => d.type === 'system').length === 0 && (
+                  <div style={{
+                    color: '#ff9f43',
+                    display: 'block',
+                    marginTop: '8px',
+                    padding: '8px',
+                    backgroundColor: 'rgba(255, 159, 67, 0.1)',
+                    borderRadius: '4px',
+                    borderLeft: '3px solid #ff9f43'
+                  }}>
+                    <strong>⚠️ Audio del sistema no disponible</strong>
+                    <p style={{ margin: '4px 0 0 0', fontSize: '12px', lineHeight: '1.4' }}>
+                      Para capturar audio del sistema en Windows:
+                      <br/>1. Configuración de Sonido → Grabación
+                      <br/>2. Mostrar dispositivos deshabilitados
+                      <br/>3. Habilitar "Mezcla estéreo" o "Stereo Mix"
+                      <br/>
+                      <br/>Si no aparece, instala <a
+                        href="#"
+                        onClick={(e) => { e.preventDefault(); window.electronAPI?.openExternal?.('https://vb-audio.com/Cable/') }}
+                        style={{ color: '#4dabf7', textDecoration: 'underline' }}
+                      >VB-Audio Cable</a>
+                    </p>
+                  </div>
+                )}
+              </small>
+            </div>
+
             <div className="settings-field">
               <label htmlFor="sampleRate">Frecuencia de muestreo</label>
               <select

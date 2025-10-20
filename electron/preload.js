@@ -7,6 +7,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getRecordingsPath: () => ipcRenderer.invoke('get-recordings-path'),
 
   // Audio recording APIs
+  getAudioDevices: () => ipcRenderer.invoke('get-audio-devices'),
   startRecording: (config) => ipcRenderer.invoke('start-recording', config),
   stopRecording: () => ipcRenderer.invoke('stop-recording'),
   pauseRecording: () => ipcRenderer.invoke('pause-recording'),
@@ -29,6 +30,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // File system APIs
   openFile: (filePath) => ipcRenderer.invoke('open-file', filePath),
+  openExternal: (url) => ipcRenderer.invoke('open-external', url),
 
   // Listeners para eventos
   onRecordingProgress: (callback) => {

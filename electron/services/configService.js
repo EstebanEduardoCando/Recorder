@@ -23,6 +23,7 @@ class ConfigService {
       language: 'auto', // auto or specific language code
       exportFormat: 'txt', // txt, srt, vtt, json
       sampleRate: 44100,
+      audioSource: '', // ID del dispositivo de audio seleccionado (vacío = predeterminado)
       theme: 'light'
     };
     this.config = this.loadConfig();

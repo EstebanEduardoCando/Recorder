@@ -309,17 +309,130 @@ export default function Settings({ onClose }: SettingsProps) {
             </div>
 
             <div className="settings-field">
+              <label htmlFor="audioFormat">Formato de audio</label>
+              <select
+                id="audioFormat"
+                value={config.audioFormat || 'flac'}
+                onChange={(e) => setConfig({ ...config, audioFormat: e.target.value as 'flac' | 'wav' | 'mp3' })}
+              >
+                <option value="flac">FLAC (Sin pérdida, comprimido)</option>
+                <option value="wav">WAV (Sin comprimir)</option>
+                <option value="mp3">MP3 (Comprimido con pérdida)</option>
+              </select>
+              <small className="field-hint">
+                FLAC recomendado: mejor calidad con menor tamaño de archivo
+              </small>
+            </div>
+
+            <div className="settings-field">
               <label htmlFor="sampleRate">Frecuencia de muestreo</label>
               <select
                 id="sampleRate"
                 value={config.sampleRate}
                 onChange={(e) => setConfig({ ...config, sampleRate: parseInt(e.target.value) })}
               >
-                <option value="16000">16 kHz (Óptimo para voz)</option>
-                <option value="44100">44.1 kHz (Calidad CD)</option>
+                <option value="16000">16 kHz (Transcripción básica)</option>
+                <option value="44100">44.1 kHz (Calidad CD - Recomendado)</option>
                 <option value="48000">48 kHz (Calidad profesional)</option>
               </select>
             </div>
+
+            <div className="settings-field">
+              <label htmlFor="channels">Canales de audio</label>
+              <select
+                id="channels"
+                value={config.channels || 2}
+                onChange={(e) => setConfig({ ...config, channels: parseInt(e.target.value) })}
+              >
+                <option value="1">Mono (1 canal)</option>
+                <option value="2">Estéreo (2 canales)</option>
+              </select>
+              <small className="field-hint">
+                Estéreo recomendado para reuniones con audio del sistema
+              </small>
+            </div>
+          </div>
+
+          <div className="settings-section">
+            <h3>🎛️ Filtros de Audio (Reuniones)</h3>
+            <div className="settings-field">
+              <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={config.enableAudioFilters ?? true}
+                  onChange={(e) => setConfig({ ...config, enableAudioFilters: e.target.checked })}
+                  style={{ marginRight: '8px' }}
+                />
+                Activar filtros de audio
+              </label>
+              <small className="field-hint">
+                Mejora automática de calidad para reuniones y transcripción
+              </small>
+            </div>
+
+            {(config.enableAudioFilters ?? true) && (
+              <>
+                <div className="settings-field">
+                  <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={config.enableNoiseReduction ?? true}
+                      onChange={(e) => setConfig({ ...config, enableNoiseReduction: e.target.checked })}
+                      style={{ marginRight: '8px' }}
+                    />
+                    Reducción de ruido de fondo
+                  </label>
+                  <small className="field-hint">
+                    Elimina ruidos ambientales (ventiladores, teclado, tráfico)
+                  </small>
+                </div>
+
+                <div className="settings-field">
+                  <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={config.enableNormalization ?? true}
+                      onChange={(e) => setConfig({ ...config, enableNormalization: e.target.checked })}
+                      style={{ marginRight: '8px' }}
+                    />
+                    Normalización de volumen
+                  </label>
+                  <small className="field-hint">
+                    Balancea el volumen de todos los participantes
+                  </small>
+                </div>
+
+                <div className="settings-field">
+                  <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={config.enableCompression ?? true}
+                      onChange={(e) => setConfig({ ...config, enableCompression: e.target.checked })}
+                      style={{ marginRight: '8px' }}
+                    />
+                    Compresión dinámica
+                  </label>
+                  <small className="field-hint">
+                    Hace las voces bajas más audibles sin distorsión
+                  </small>
+                </div>
+
+                <div className="settings-field">
+                  <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={config.enableHighPassFilter ?? true}
+                      onChange={(e) => setConfig({ ...config, enableHighPassFilter: e.target.checked })}
+                      style={{ marginRight: '8px' }}
+                    />
+                    Filtro pasa-altos
+                  </label>
+                  <small className="field-hint">
+                    Elimina ruidos graves (ventiladores, vibraciones) - {config.highPassFrequency || 80} Hz
+                  </small>
+                </div>
+              </>
+            )}
           </div>
         </div>
 

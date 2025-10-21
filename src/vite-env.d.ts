@@ -71,8 +71,17 @@ interface AudioDevicesResult {
 interface RecordingConfig {
   sampleRate?: number;
   channels?: number;
-  format?: 'wav' | 'mp3' | 'ogg';
+  format?: 'wav' | 'mp3' | 'ogg' | 'flac';
   audioSource?: string;
+  bitDepth?: number;
+  bitrate?: number;
+  // Audio filters
+  enableAudioFilters?: boolean;
+  enableNoiseReduction?: boolean;
+  enableNormalization?: boolean;
+  enableCompression?: boolean;
+  enableHighPassFilter?: boolean;
+  highPassFrequency?: number;
 }
 
 interface RecordingResult {
@@ -149,8 +158,22 @@ interface AppConfig {
   language: string;
   exportFormat: 'txt' | 'srt' | 'vtt' | 'json';
   sampleRate: number;
+  channels: number;
   audioSource: string;
+  audioFormat: 'flac' | 'wav' | 'mp3';
   theme: 'light' | 'dark';
+
+  // Audio Filters for Meetings
+  enableAudioFilters: boolean;
+  enableNoiseReduction: boolean;
+  enableNormalization: boolean;
+  enableCompression: boolean;
+  enableHighPassFilter: boolean;
+  highPassFrequency: number;
+
+  // Audio Quality
+  bitDepth: number;
+  bitrate: number;
 
   // Whisper Advanced Options
   useGpu: boolean;

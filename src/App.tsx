@@ -82,10 +82,19 @@ function App() {
       setStatusMessage('Iniciando grabación...')
 
       const result = await window.electronAPI.startRecording({
-        sampleRate: config?.sampleRate || 16000,
-        channels: 1,
-        format: 'wav',
-        audioSource: config?.audioSource || ''
+        sampleRate: config?.sampleRate || 44100,
+        channels: config?.channels || 2,
+        format: config?.audioFormat || 'wav',
+        audioSource: config?.audioSource || '',
+        bitDepth: config?.bitDepth || 16,
+        bitrate: config?.bitrate || 192,
+        // Audio filters
+        enableAudioFilters: config?.enableAudioFilters ?? true,
+        enableNoiseReduction: config?.enableNoiseReduction ?? true,
+        enableNormalization: config?.enableNormalization ?? true,
+        enableCompression: config?.enableCompression ?? true,
+        enableHighPassFilter: config?.enableHighPassFilter ?? true,
+        highPassFrequency: config?.highPassFrequency || 80
       })
 
       if (result.success) {

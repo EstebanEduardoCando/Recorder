@@ -37,16 +37,20 @@ class AudioRecorder {
 
       if (process.platform === 'win32') {
         // En Windows, usar FFmpeg con DirectShow para listar dispositivos
-        const { stdout } = await execPromise(`"${ffmpegPath}" -list_devices true -f dshow -i dummy`, {
+        const { stdout, stderr } = await execPromise(`"${ffmpegPath}" -list_devices true -f dshow -i dummy`, {
           encoding: 'utf8',
           maxBuffer: 1024 * 1024
         }).catch(err => {
-          // FFmpeg retorna exit code 1 al listar dispositivos, pero stdout contiene la info
-          return { stdout: err.stdout || '' };
+          // FFmpeg retorna exit code 1 al listar dispositivos, pero stdout/stderr contienen la info
+          return { stdout: err.stdout || '', stderr: err.stderr || '' };
         });
 
+        // La salida de FFmpeg con -list_devices va a stderr, no stdout
+        const output = stderr || stdout;
+        console.log('FFmpeg output para listar dispositivos (primeras 500 chars):', output.substring(0, 500));
+
         // Parsear la salida de FFmpeg
-        const lines = stdout.split('\n');
+        const lines = output.split('\n');
         let currentType = null;
 
         for (const line of lines) {
@@ -72,6 +76,7 @@ class AudioRecorder {
                 type: isOutput ? 'system' : 'microphone',
                 platform: 'win32'
               });
+              console.log(`  → Dispositivo detectado: "${deviceName}" (${isOutput ? 'system' : 'microphone'})`);
             }
           }
         }
@@ -135,6 +140,7 @@ class AudioRecorder {
         platform: process.platform
       });
 
+      console.log(`✓ Detectados ${devices.length} dispositivos de audio:`, devices.map(d => `${d.name} (${d.type})`));
       return devices;
     } catch (error) {
       console.error('Error detectando dispositivos de audio:', error);
@@ -159,10 +165,19 @@ class AudioRecorder {
     await this.ensureRecordingsDir();
 
     const {
-      sampleRate = 16000,
-      channels = 1,
+      sampleRate = 44100,
+      channels = 2,
       format = 'wav',
-      audioSource = null // ID del dispositivo de audio seleccionado
+      audioSource = null, // ID del dispositivo de audio seleccionado
+      bitDepth = 16,
+      bitrate = 192,
+      // Audio filters
+      enableAudioFilters = true,
+      enableNoiseReduction = true,
+      enableNormalization = true,
+      enableCompression = true,
+      enableHighPassFilter = true,
+      highPassFrequency = 80
     } = config;
 
     // Generar nombre de archivo único
@@ -170,24 +185,62 @@ class AudioRecorder {
     const filename = `recording-${timestamp}.${format}`;
     this.outputPath = path.join(this.getRecordingsDir(), filename);
 
-    return new Promise((resolve, reject) => {
+    return new Promise(async (resolve, reject) => {
       try {
         let inputDevice, audioInput;
 
         // Configurar dispositivo según la plataforma y la fuente seleccionada
+        let isMixingMode = false;
+        let microphoneInput = null;
+        let systemInput = null;
+
         if (process.platform === 'win32') {
           inputDevice = 'dshow';
 
-          if (audioSource && audioSource !== 'both') {
-            // Usar el dispositivo seleccionado
+          if (audioSource === 'both') {
+            // Modo mezcla: necesitamos identificar micrófono y sistema
+            isMixingMode = true;
+
+            // Obtener dispositivos disponibles
+            const devices = await this.getAudioDevices();
+            const microphones = devices.filter(d => d.type === 'microphone' && d.id !== 'both');
+            const systemDevices = devices.filter(d => d.type === 'system');
+
+            if (microphones.length > 0 && systemDevices.length > 0) {
+              microphoneInput = microphones[0].id;
+              systemInput = systemDevices[0].id;
+              console.log('Mezcla de audio configurada:', { microphoneInput, systemInput });
+            } else {
+              console.warn('No se encontraron dispositivos para mezcla. Usando solo micrófono.');
+              // Si no hay dispositivos del sistema, usar solo el micrófono
+              const defaultMic = microphones.length > 0 ? microphones[0] : devices.find(d => d.type === 'microphone' && d.id !== 'both');
+              if (defaultMic) {
+                audioInput = `audio=${defaultMic.id}`;
+                console.log('Usando micrófono:', defaultMic.name);
+              } else {
+                throw new Error('No se encontró ningún micrófono. Verifica que tengas un micrófono conectado.');
+              }
+              isMixingMode = false;
+            }
+          } else if (audioSource && audioSource !== '' && audioSource !== 'both') {
+            // Usar el dispositivo seleccionado específico
             audioInput = `audio=${audioSource}`;
-          } else if (audioSource === 'both') {
-            // TODO: Implementar mezcla de micrófono + sistema (requiere filtros complejos)
-            audioInput = 'audio=Micrófono (NVIDIA Broadcast)';
-            console.warn('Mezcla de audio no implementada aún, usando micrófono');
+            console.log('Usando dispositivo seleccionado:', audioSource);
           } else {
-            // Dispositivo predeterminado
-            audioInput = 'audio=Micrófono (NVIDIA Broadcast)';
+            // Sin fuente especificada o vacía: obtener primer micrófono disponible
+            console.log('Audio source vacío o no especificado, buscando micrófono predeterminado...');
+            const devices = await this.getAudioDevices();
+            console.log('Dispositivos encontrados:', devices.length);
+            console.log('Dispositivos tipo micrófono:', devices.filter(d => d.type === 'microphone'));
+
+            const defaultMic = devices.find(d => d.type === 'microphone' && d.id !== 'both');
+            if (defaultMic) {
+              audioInput = `audio=${defaultMic.id}`;
+              console.log('✓ Usando micrófono predeterminado:', defaultMic.name);
+            } else {
+              console.error('❌ No se encontró ningún micrófono. Dispositivos disponibles:', devices);
+              throw new Error('No se encontró ningún micrófono disponible. Verifica que tengas un micrófono conectado y habilitado en Windows.');
+            }
           }
         } else if (process.platform === 'darwin') {
           inputDevice = 'avfoundation';
@@ -197,13 +250,85 @@ class AudioRecorder {
           audioInput = audioSource || 'default'; // Dispositivo seleccionado o predeterminado
         }
 
-        this.ffmpegCommand = ffmpeg()
-          .input(audioInput)
-          .inputFormat(inputDevice)
-          .audioCodec('pcm_s16le')
-          .audioChannels(channels)
-          .audioFrequency(sampleRate)
-          .format(format)
+        // Construir cadena de filtros de audio para mejorar calidad
+        const audioFilters = [];
+
+        if (enableAudioFilters) {
+          // 1. Filtro pasa-altos (elimina ruidos graves como ventiladores, tráfico)
+          if (enableHighPassFilter) {
+            audioFilters.push(`highpass=f=${highPassFrequency}`);
+          }
+
+          // 2. Reducción de ruido de fondo (afftdn = FFT Denoiser)
+          if (enableNoiseReduction) {
+            audioFilters.push('afftdn=nf=-25:tn=1');
+          }
+
+          // 3. Normalización de volumen (loudnorm para reuniones con diferentes niveles)
+          if (enableNormalization) {
+            audioFilters.push('loudnorm=I=-16:TP=-1.5:LRA=11');
+          }
+
+          // 4. Compresión dinámica (hace voces bajas más audibles sin distorsión)
+          if (enableCompression) {
+            audioFilters.push('acompressor=threshold=0.089:ratio=4:attack=200:release=1000:makeup=2');
+          }
+        }
+
+        // Determinar codec según el formato
+        let audioCodec;
+        if (format === 'flac') {
+          audioCodec = 'flac';
+        } else if (format === 'mp3') {
+          audioCodec = 'libmp3lame';
+        } else if (format === 'wav') {
+          audioCodec = bitDepth === 24 ? 'pcm_s24le' : 'pcm_s16le';
+        } else {
+          audioCodec = 'pcm_s16le'; // default
+        }
+
+        // Configurar FFmpeg según el modo
+        if (isMixingMode && microphoneInput && systemInput) {
+          // Modo mezcla: capturar ambas fuentes y mezclarlas
+          this.ffmpegCommand = ffmpeg()
+            .input(`audio=${microphoneInput}`)
+            .inputFormat(inputDevice)
+            .input(`audio=${systemInput}`)
+            .inputFormat(inputDevice)
+            .audioCodec(audioCodec)
+            .audioChannels(channels)
+            .audioFrequency(sampleRate);
+
+          // Construir cadena de filtros compleja correctamente
+          let filterChain = '[0:a][1:a]amix=inputs=2:duration=longest:dropout_transition=2';
+
+          // Si hay filtros de audio, aplicarlos después de la mezcla
+          if (audioFilters.length > 0) {
+            filterChain += '[outa];[outa]' + audioFilters.join(',');
+          }
+
+          this.ffmpegCommand.complexFilter(filterChain);
+        } else {
+          // Modo normal: una sola fuente
+          this.ffmpegCommand = ffmpeg()
+            .input(audioInput)
+            .inputFormat(inputDevice)
+            .audioCodec(audioCodec)
+            .audioChannels(channels)
+            .audioFrequency(sampleRate);
+
+          // Aplicar filtros si hay alguno
+          if (audioFilters.length > 0) {
+            this.ffmpegCommand.audioFilters(audioFilters.join(','));
+          }
+        }
+
+        // Configurar bitrate para formatos comprimidos
+        if (format === 'mp3' || format === 'flac') {
+          this.ffmpegCommand.audioBitrate(`${bitrate}k`);
+        }
+
+        this.ffmpegCommand.format(format)
           .on('start', (commandLine) => {
             console.log('FFmpeg iniciado:', commandLine);
             this.isRecording = true;

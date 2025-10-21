@@ -7,6 +7,10 @@ const { app } = require('electron');
 const path = require('path');
 const fs = require('fs').promises;
 const https = require('https');
+const ffmpeg = require('fluent-ffmpeg');
+const ffmpegPath = require('@ffmpeg-installer/ffmpeg').path;
+
+ffmpeg.setFfmpegPath(ffmpegPath);
 
 class TranscriptionServiceLocal {
   constructor() {
@@ -234,6 +238,47 @@ class TranscriptionServiceLocal {
   }
 
   /**
+   * Convierte cualquier formato de audio a WAV 16kHz mono (requerido por Whisper)
+   * @param {string} inputPath - Ruta al archivo de audio original
+   * @returns {Promise<string>} Ruta al archivo WAV convertido
+   */
+  async convertToWav(inputPath) {
+    const ext = path.extname(inputPath).toLowerCase();
+
+    // Si ya es WAV, verificar si tiene el formato correcto
+    if (ext === '.wav') {
+      // TODO: Verificar sample rate y canales, convertir si es necesario
+      console.log('✓ Archivo ya es WAV, usando directamente');
+      return inputPath;
+    }
+
+    // Crear ruta temporal para el archivo convertido
+    const tempWavPath = inputPath.replace(ext, '_temp.wav');
+
+    console.log(`🔄 Convirtiendo ${ext} a WAV 16kHz mono para Whisper...`);
+
+    return new Promise((resolve, reject) => {
+      ffmpeg(inputPath)
+        .audioCodec('pcm_s16le')      // PCM 16-bit
+        .audioChannels(1)              // Mono
+        .audioFrequency(16000)         // 16kHz (requerido por Whisper)
+        .format('wav')
+        .on('start', (commandLine) => {
+          console.log('FFmpeg conversión iniciada:', commandLine);
+        })
+        .on('end', () => {
+          console.log(`✓ Conversión completada: ${tempWavPath}`);
+          resolve(tempWavPath);
+        })
+        .on('error', (err) => {
+          console.error('❌ Error en conversión:', err);
+          reject(new Error(`No se pudo convertir el audio a WAV: ${err.message}`));
+        })
+        .save(tempWavPath);
+    });
+  }
+
+  /**
    * Transcribe un archivo de audio (grabación nueva o existente)
    * @param {string} audioPath - Ruta al archivo de audio
    * @param {Object} options - Opciones de transcripción
@@ -265,9 +310,22 @@ class TranscriptionServiceLocal {
       throw new Error(`El archivo de audio no existe: ${audioPath}`);
     }
 
+    let wavPath = audioPath;
+    let tempFileCreated = false;
+
     try {
       if (onProgress) {
         onProgress({ progress: 0, status: 'Iniciando transcripción...' });
+      }
+
+      // Convertir a WAV si es necesario
+      const ext = path.extname(audioPath).toLowerCase();
+      if (ext !== '.wav') {
+        if (onProgress) {
+          onProgress({ progress: 10, status: 'Convirtiendo audio a formato compatible...' });
+        }
+        wavPath = await this.convertToWav(audioPath);
+        tempFileCreated = true;
       }
 
       if (onProgress) {
@@ -279,7 +337,8 @@ class TranscriptionServiceLocal {
       const appConfig = configService.getConfig();
 
       // Transcribir usando whisper.node con parámetros optimizados
-      const { stop, promise} = this.whisperContext.transcribeFile(audioPath, {
+      console.log(`📝 Transcribiendo archivo: ${wavPath}`);
+      const { stop, promise} = this.whisperContext.transcribeFile(wavPath, {
         // Idioma y detección
         language: language === 'auto' ? undefined : language,
 
@@ -329,6 +388,16 @@ class TranscriptionServiceLocal {
         onProgress({ progress: 100, status: 'Transcripción completada' });
       }
 
+      // Limpiar archivo temporal si se creó
+      if (tempFileCreated && wavPath !== audioPath) {
+        try {
+          await fs.unlink(wavPath);
+          console.log('✓ Archivo temporal eliminado:', wavPath);
+        } catch (err) {
+          console.warn('⚠️  No se pudo eliminar archivo temporal:', err);
+        }
+      }
+
       return {
         success: true,
         ...transcriptionResult
@@ -336,6 +405,16 @@ class TranscriptionServiceLocal {
 
     } catch (error) {
       console.error('Error en transcripción:', error);
+
+      // Limpiar archivo temporal en caso de error
+      if (tempFileCreated && wavPath !== audioPath) {
+        try {
+          await fs.unlink(wavPath);
+        } catch (err) {
+          // Ignorar error de limpieza
+        }
+      }
+
       throw new Error(`Error al transcribir: ${error.message}`);
     }
   }

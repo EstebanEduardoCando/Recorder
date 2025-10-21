@@ -22,9 +22,23 @@ class ConfigService {
       whisperModel: 'base', // tiny, base, small, medium, large
       language: 'auto', // auto or specific language code
       exportFormat: 'txt', // txt, srt, vtt, json
-      sampleRate: 44100,
+      sampleRate: 44100, // 44.1 kHz - Óptimo para reuniones
+      channels: 2, // Estéreo para capturar audio del sistema
       audioSource: '', // ID del dispositivo de audio seleccionado (vacío = predeterminado)
+      audioFormat: 'wav', // wav (recomendado), flac, mp3
       theme: 'light',
+
+      // Audio Filters for Meetings
+      enableAudioFilters: true,        // Activar filtros de audio
+      enableNoiseReduction: true,      // Reducción de ruido de fondo
+      enableNormalization: true,       // Normalización de volumen
+      enableCompression: true,         // Compresión dinámica
+      enableHighPassFilter: true,      // Filtro pasa-altos (elimina graves)
+      highPassFrequency: 80,           // Frecuencia de corte (Hz)
+
+      // Audio Quality
+      bitDepth: 16,                    // 16-bit (suficiente para voz)
+      bitrate: 192,                    // kbps (para formatos comprimidos)
 
       // Whisper Advanced Options
       useGpu: true,              // Usar aceleración GPU

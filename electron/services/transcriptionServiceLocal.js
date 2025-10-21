@@ -516,6 +516,53 @@ class TranscriptionServiceLocal {
   }
 
   /**
+   * Carga una transcripción guardada previamente
+   * @param {string} audioPath - Ruta al archivo de audio
+   * @returns {Promise<Object>} Objeto con la transcripción cargada
+   */
+  async loadTranscription(audioPath) {
+    try {
+      // Intentar cargar el archivo .txt asociado
+      const basePath = audioPath.replace(/\.\w+$/, '');
+      const txtPath = basePath + '.txt';
+
+      try {
+        const text = await fs.readFile(txtPath, 'utf8');
+
+        return {
+          success: true,
+          text: text,
+          segments: [], // Los archivos TXT no tienen segmentos
+          language: 'unknown',
+          message: 'Transcripción cargada desde archivo'
+        };
+      } catch (txtError) {
+        // Si no hay archivo TXT, intentar con JSON
+        const jsonPath = basePath + '.json';
+
+        try {
+          const jsonData = await fs.readFile(jsonPath, 'utf8');
+          const transcription = JSON.parse(jsonData);
+
+          return {
+            success: true,
+            ...transcription,
+            message: 'Transcripción cargada desde JSON'
+          };
+        } catch (jsonError) {
+          throw new Error('No se encontró transcripción para este archivo');
+        }
+      }
+    } catch (error) {
+      console.error('Error cargando transcripción:', error);
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  }
+
+  /**
    * Lista todos los modelos disponibles y sus estados
    * @returns {Promise<Array>} Lista de modelos con información de descarga
    */

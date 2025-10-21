@@ -21,6 +21,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   exportTranscriptionText: (transcription, outputPath) => ipcRenderer.invoke('export-transcription-text', transcription, outputPath),
   exportTranscriptionSRT: (transcription, outputPath) => ipcRenderer.invoke('export-transcription-srt', transcription, outputPath),
   downloadWhisperModel: (modelName) => ipcRenderer.invoke('download-whisper-model', modelName),
+  loadTranscription: (audioPath) => ipcRenderer.invoke('load-transcription', audioPath),
 
   // Model Management APIs
   listWhisperModels: () => ipcRenderer.invoke('list-whisper-models'),
@@ -30,6 +31,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Recording Management APIs
   listRecordings: () => ipcRenderer.invoke('list-recordings'),
   renameRecording: (oldPath, newName) => ipcRenderer.invoke('rename-recording', oldPath, newName),
+  deleteRecordings: (paths) => ipcRenderer.invoke('delete-recordings', paths),
 
   // File Dialog APIs
   openFileDialog: (options) => ipcRenderer.invoke('open-file-dialog', options),

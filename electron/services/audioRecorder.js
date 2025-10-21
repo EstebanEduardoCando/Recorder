@@ -564,6 +564,68 @@ class AudioRecorder {
       throw new Error(`No se pudo listar las grabaciones: ${error.message}`);
     }
   }
+
+  /**
+   * Elimina una o varias grabaciones
+   * @param {string|string[]} paths - Ruta(s) del archivo(s) a eliminar
+   * @returns {Promise<Object>} Resultado de la operación
+   */
+  async deleteRecordings(paths) {
+    try {
+      const pathsArray = Array.isArray(paths) ? paths : [paths];
+      const results = {
+        success: true,
+        deleted: [],
+        failed: []
+      };
+
+      for (const filePath of pathsArray) {
+        try {
+          // Verificar que el archivo existe
+          await fs.access(filePath);
+
+          // Eliminar el archivo y sus archivos relacionados (.txt, .srt, .vtt, .json)
+          const basePath = filePath.replace(/\.\w+$/, '');
+          const relatedExtensions = ['.txt', '.srt', '.vtt', '.json'];
+
+          // Eliminar archivo principal
+          await fs.unlink(filePath);
+          results.deleted.push(filePath);
+
+          // Intentar eliminar archivos relacionados (transcripciones)
+          for (const ext of relatedExtensions) {
+            const relatedPath = basePath + ext;
+            try {
+              await fs.access(relatedPath);
+              await fs.unlink(relatedPath);
+              console.log(`✓ Archivo relacionado eliminado: ${path.basename(relatedPath)}`);
+            } catch (error) {
+              // Archivo relacionado no existe, ignorar
+            }
+          }
+
+          console.log(`✓ Grabación eliminada: ${path.basename(filePath)}`);
+        } catch (error) {
+          console.error(`Error eliminando ${filePath}:`, error);
+          results.failed.push({
+            path: filePath,
+            error: error.message
+          });
+        }
+      }
+
+      if (results.failed.length > 0) {
+        results.success = false;
+        results.message = `${results.deleted.length} archivos eliminados, ${results.failed.length} fallidos`;
+      } else {
+        results.message = `${results.deleted.length} archivo(s) eliminado(s) exitosamente`;
+      }
+
+      return results;
+    } catch (error) {
+      throw new Error(`No se pudieron eliminar las grabaciones: ${error.message}`);
+    }
+  }
 }
 
 module.exports = new AudioRecorder();

@@ -9,15 +9,15 @@ const path = require('path');
 class TranscriptionEstimator {
   constructor() {
     // Factores de velocidad relativa al tiempo real del audio
-    // Valores basados en benchmarks con diferentes configuraciones
+    // Valores ajustados basados en benchmarks reales (multiplicados por 4 para ser más realistas)
     this.speedFactors = {
       // CPU (sin GPU)
       cpu: {
-        tiny: 0.5,    // 0.5x = tarda el doble del tiempo del audio
-        base: 0.3,    // 0.3x = ~3.3 veces el tiempo del audio
-        small: 0.15,  // 0.15x = ~6.6 veces el tiempo del audio
-        medium: 0.08, // 0.08x = ~12.5 veces el tiempo del audio
-        large: 0.04   // 0.04x = ~25 veces el tiempo del audio
+        tiny: 0.125,   // 0.125x = tarda 8 veces el tiempo del audio
+        base: 0.075,   // 0.075x = tarda ~13 veces el tiempo del audio
+        small: 0.0375, // 0.0375x = tarda ~26 veces el tiempo del audio
+        medium: 0.02,  // 0.02x = tarda ~50 veces el tiempo del audio
+        large: 0.01    // 0.01x = tarda ~100 veces el tiempo del audio
       },
       // GPU CUDA (NVIDIA)
       cuda: {
@@ -63,34 +63,69 @@ class TranscriptionEstimator {
   }
 
   /**
-   * Obtiene la duración de un archivo de audio
+   * Obtiene la duración de un archivo de audio usando FFprobe
    * @param {string} audioPath - Ruta al archivo
    * @returns {Promise<number>} Duración en segundos
    */
   async getAudioDuration(audioPath) {
     try {
+      const { exec } = require('child_process');
+      const { promisify } = require('util');
+      const execPromise = promisify(exec);
+
+      // Usar FFprobe para obtener la duración exacta
+      const ffmpegPath = require('@ffmpeg-installer/ffmpeg').path;
+      const ffprobePath = ffmpegPath.replace('ffmpeg', 'ffprobe').replace('.exe', '.exe');
+
+      console.log(`ℹ️  Intentando usar FFprobe: ${ffprobePath}`);
+
+      try {
+        const { stdout, stderr } = await execPromise(
+          `"${ffprobePath}" -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "${audioPath}"`
+        );
+
+        if (stderr) {
+          console.warn('FFprobe stderr:', stderr);
+        }
+
+        const duration = parseFloat(stdout.trim());
+        if (!isNaN(duration) && duration > 0) {
+          console.log(`✓ Duración del audio (FFprobe): ${duration.toFixed(2)}s`);
+          return Math.ceil(duration);
+        } else {
+          console.warn(`FFprobe retornó valor inválido: "${stdout.trim()}"`);
+        }
+      } catch (ffprobeError) {
+        console.warn('FFprobe no disponible:', ffprobeError.message);
+      }
+
+      // Fallback: estimar por tamaño de archivo
       const stats = await fs.stat(audioPath);
       const fileSizeBytes = stats.size;
-
-      // Estimación aproximada basada en formato
       const ext = path.extname(audioPath).toLowerCase();
 
-      // Factores de compresión aproximados (bytes por segundo)
-      const compressionRates = {
-        '.wav': 176400,  // PCM 16-bit, 44.1kHz, stereo (~1.4 MB/min)
-        '.mp3': 16000,   // ~128 kbps (~1 MB/min)
+      console.log(`ℹ️  Archivo: ${path.basename(audioPath)}, tamaño: ${(fileSizeBytes / 1024 / 1024).toFixed(2)} MB`);
+
+      // Para WAV, restar header (44 bytes típicamente)
+      const dataSize = ext === '.wav' ? fileSizeBytes - 44 : fileSizeBytes;
+
+      // Tasas de bytes por segundo
+      const bytesPerSecond = {
+        '.wav': 176400,  // 16-bit, 44.1kHz, stereo = 2 bytes * 2 channels * 44100 Hz
+        '.mp3': 16000,   // ~128 kbps = 16000 bytes/s
         '.m4a': 16000,   // ~128 kbps
-        '.flac': 100000, // Variable, ~800 kbps
+        '.flac': 100000, // ~800 kbps (variable)
         '.ogg': 16000    // ~128 kbps
       };
 
-      const rate = compressionRates[ext] || compressionRates['.wav'];
-      const durationSeconds = fileSizeBytes / rate;
+      const rate = bytesPerSecond[ext] || bytesPerSecond['.wav'];
+      const durationSeconds = Math.ceil(dataSize / rate);
 
-      return Math.max(1, Math.floor(durationSeconds)); // Mínimo 1 segundo
+      console.log(`ℹ️  Duración estimada (tamaño archivo): ${durationSeconds}s (tasa: ${rate} bytes/s)`);
+      return Math.max(1, durationSeconds);
     } catch (error) {
       console.error('Error calculando duración:', error);
-      // Fallback: asumir 60 segundos
+      // Fallback seguro: asumir 60 segundos
       return 60;
     }
   }

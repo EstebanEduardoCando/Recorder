@@ -223,6 +223,16 @@ ipcMain.handle('export-transcription-srt', async (event, transcription, outputPa
   }
 });
 
+ipcMain.handle('load-transcription', async (_event, audioPath) => {
+  try {
+    const result = await transcriptionService.loadTranscription(audioPath);
+    return result;
+  } catch (error) {
+    console.error('Error en load-transcription:', error);
+    return { success: false, error: error.message };
+  }
+});
+
 ipcMain.handle('download-whisper-model', async (event, modelName) => {
   try {
     const result = await transcriptionService.downloadModel(modelName);
@@ -281,6 +291,16 @@ ipcMain.handle('rename-recording', async (event, oldPath, newName) => {
     return result;
   } catch (error) {
     console.error('Error en rename-recording:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('delete-recordings', async (event, paths) => {
+  try {
+    const result = await audioRecorder.deleteRecordings(paths);
+    return result;
+  } catch (error) {
+    console.error('Error en delete-recordings:', error);
     return { success: false, error: error.message };
   }
 });

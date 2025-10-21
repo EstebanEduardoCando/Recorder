@@ -21,6 +21,7 @@ interface Window {
     exportTranscriptionText: (transcription: TranscriptionResult, outputPath: string) => Promise<SaveResult>;
     exportTranscriptionSRT: (transcription: TranscriptionResult, outputPath: string) => Promise<SaveResult>;
     downloadWhisperModel: (modelName: string) => Promise<ModelDownloadResult>;
+    loadTranscription: (audioPath: string) => Promise<TranscriptionResult>;
 
     // Model Management
     listWhisperModels: () => Promise<ModelsListResult>;
@@ -30,6 +31,7 @@ interface Window {
     // Recording Management
     listRecordings: () => Promise<RecordingsListResult>;
     renameRecording: (oldPath: string, newName: string) => Promise<RenameResult>;
+    deleteRecordings: (paths: string | string[]) => Promise<DeleteResult>;
 
     // File Dialogs
     openFileDialog: (options?: any) => Promise<FileDialogResult>;
@@ -282,5 +284,13 @@ interface TranscriptionEstimation {
 interface EstimationResult {
   success: boolean;
   estimation?: TranscriptionEstimation;
+  error?: string;
+}
+
+interface DeleteResult {
+  success: boolean;
+  deleted: string[];
+  failed: Array<{ path: string; error: string }>;
+  message: string;
   error?: string;
 }

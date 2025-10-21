@@ -13,14 +13,17 @@ interface Recording {
 
 interface RecordingsManagerProps {
   onSelectRecording?: (path: string) => void;
+  onLoadTranscription?: (path: string) => void;
 }
 
-export default function RecordingsManager({ onSelectRecording }: RecordingsManagerProps) {
+export default function RecordingsManager({ onSelectRecording, onLoadTranscription }: RecordingsManagerProps) {
   const [recordings, setRecordings] = useState<Recording[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [renaming, setRenaming] = useState<string | null>(null);
   const [newName, setNewName] = useState('');
+  const [selectedRecordings, setSelectedRecordings] = useState<Set<string>>(new Set());
+  const [deleting, setDeleting] = useState(false);
 
   const loadRecordings = async () => {
     try {
@@ -104,6 +107,82 @@ export default function RecordingsManager({ onSelectRecording }: RecordingsManag
     setNewName('');
   };
 
+  const handleToggleSelection = (path: string) => {
+    const newSelection = new Set(selectedRecordings);
+    if (newSelection.has(path)) {
+      newSelection.delete(path);
+    } else {
+      newSelection.add(path);
+    }
+    setSelectedRecordings(newSelection);
+  };
+
+  const handleToggleSelectAll = () => {
+    if (selectedRecordings.size === recordings.length) {
+      setSelectedRecordings(new Set());
+    } else {
+      setSelectedRecordings(new Set(recordings.map(r => r.path)));
+    }
+  };
+
+  const handleDeleteSelected = async () => {
+    if (selectedRecordings.size === 0) return;
+
+    const confirmMessage = selectedRecordings.size === 1
+      ? '¿Estás seguro de eliminar esta grabación?'
+      : `¿Estás seguro de eliminar ${selectedRecordings.size} grabaciones?`;
+
+    if (!confirm(confirmMessage)) return;
+
+    try {
+      setDeleting(true);
+      setError(null);
+
+      const paths = Array.from(selectedRecordings);
+      const result = await window.electronAPI.deleteRecordings(paths);
+
+      if (result.success || result.deleted.length > 0) {
+        alert(result.message);
+        setSelectedRecordings(new Set());
+        await loadRecordings();
+      } else {
+        setError(result.error || 'Error al eliminar grabaciones');
+      }
+    } catch (err) {
+      setError('Error al eliminar: ' + String(err));
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const handleDeleteSingle = async (path: string) => {
+    if (!confirm('¿Estás seguro de eliminar esta grabación?')) return;
+
+    try {
+      setDeleting(true);
+      setError(null);
+
+      const result = await window.electronAPI.deleteRecordings(path);
+
+      if (result.success) {
+        alert(result.message);
+        await loadRecordings();
+      } else {
+        setError(result.error || 'Error al eliminar');
+      }
+    } catch (err) {
+      setError('Error al eliminar: ' + String(err));
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const handleLoadTranscription = async (path: string) => {
+    if (onLoadTranscription) {
+      onLoadTranscription(path);
+    }
+  };
+
   const formatDate = (date: Date) => {
     const d = new Date(date);
     return d.toLocaleString('es-ES', {
@@ -129,6 +208,25 @@ export default function RecordingsManager({ onSelectRecording }: RecordingsManag
       <div className="recordings-header">
         <h2>Grabaciones</h2>
         <div className="recordings-actions">
+          {recordings.length > 0 && (
+            <>
+              <button
+                onClick={handleDeleteSelected}
+                className="btn-delete"
+                disabled={selectedRecordings.size === 0 || deleting}
+                title="Eliminar seleccionados"
+              >
+                {deleting ? 'Eliminando...' : `Eliminar (${selectedRecordings.size})`}
+              </button>
+              <button
+                onClick={handleToggleSelectAll}
+                className="btn-select-all"
+                title={selectedRecordings.size === recordings.length ? 'Deseleccionar todo' : 'Seleccionar todo'}
+              >
+                {selectedRecordings.size === recordings.length ? 'Deseleccionar' : 'Seleccionar todo'}
+              </button>
+            </>
+          )}
           <button onClick={handleOpenFile} className="btn-open-file">
             Abrir archivo...
           </button>
@@ -150,7 +248,7 @@ export default function RecordingsManager({ onSelectRecording }: RecordingsManag
       ) : (
         <div className="recordings-list">
           {recordings.map((recording) => (
-            <div key={recording.path} className="recording-item">
+            <div key={recording.path} className={`recording-item ${selectedRecordings.has(recording.path) ? 'selected' : ''}`}>
               {renaming === recording.path ? (
                 <div className="rename-form">
                   <input
@@ -176,6 +274,14 @@ export default function RecordingsManager({ onSelectRecording }: RecordingsManag
                 </div>
               ) : (
                 <>
+                  <input
+                    type="checkbox"
+                    className="recording-checkbox"
+                    checked={selectedRecordings.has(recording.path)}
+                    onChange={() => handleToggleSelection(recording.path)}
+                    title="Seleccionar para eliminar"
+                  />
+
                   <div className="recording-info">
                     <div className="recording-name">{recording.name}</div>
                     <div className="recording-metadata">
@@ -186,6 +292,13 @@ export default function RecordingsManager({ onSelectRecording }: RecordingsManag
                   </div>
 
                   <div className="recording-actions">
+                    <button
+                      onClick={() => handleLoadTranscription(recording.path)}
+                      className="btn-load"
+                      title="Cargar transcripción"
+                    >
+                      Ver texto
+                    </button>
                     <button
                       onClick={() => handleSelectRecording(recording.path)}
                       className="btn-transcribe"
@@ -199,6 +312,14 @@ export default function RecordingsManager({ onSelectRecording }: RecordingsManag
                       title="Renombrar archivo"
                     >
                       Renombrar
+                    </button>
+                    <button
+                      onClick={() => handleDeleteSingle(recording.path)}
+                      className="btn-delete-single"
+                      title="Eliminar"
+                      disabled={deleting}
+                    >
+                      🗑️
                     </button>
                   </div>
                 </>

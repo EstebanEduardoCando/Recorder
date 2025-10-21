@@ -17,6 +17,7 @@ interface Window {
     // Transcription
     initializeWhisper: (modelName?: string) => Promise<WhisperInitResult>;
     transcribeAudio: (audioPath: string, options?: TranscriptionOptions) => Promise<TranscriptionResult>;
+    cancelTranscription: () => Promise<{ success: boolean; message: string }>;
     saveTranscription: (transcription: TranscriptionResult, outputPath: string) => Promise<SaveResult>;
     exportTranscriptionText: (transcription: TranscriptionResult, outputPath: string) => Promise<SaveResult>;
     exportTranscriptionSRT: (transcription: TranscriptionResult, outputPath: string) => Promise<SaveResult>;

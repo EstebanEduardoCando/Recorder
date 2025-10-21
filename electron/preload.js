@@ -17,6 +17,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Transcription APIs
   initializeWhisper: (modelName) => ipcRenderer.invoke('initialize-whisper', modelName),
   transcribeAudio: (audioPath, options) => ipcRenderer.invoke('transcribe-audio', audioPath, options),
+  cancelTranscription: () => ipcRenderer.invoke('cancel-transcription'),
   saveTranscription: (transcription, outputPath) => ipcRenderer.invoke('save-transcription', transcription, outputPath),
   exportTranscriptionText: (transcription, outputPath) => ipcRenderer.invoke('export-transcription-text', transcription, outputPath),
   exportTranscriptionSRT: (transcription, outputPath) => ipcRenderer.invoke('export-transcription-srt', transcription, outputPath),

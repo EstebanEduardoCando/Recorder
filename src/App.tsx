@@ -4,6 +4,7 @@ import AudioPlayer from './components/AudioPlayer'
 import Settings from './components/Settings'
 import ModelManager from './components/ModelManager'
 import RecordingsManager from './components/RecordingsManager'
+import Waveform from './components/Waveform'
 
 type TabType = 'recorder' | 'models' | 'recordings';
 
@@ -29,6 +30,8 @@ function App() {
   const [elapsedTime, setElapsedTime] = useState(0)
   const [finalElapsedTime, setFinalElapsedTime] = useState(0) // Tiempo final cuando termina la transcripción
   const [startTime, setStartTime] = useState<number | null>(null)
+  const [recordingStartTime, setRecordingStartTime] = useState<number | null>(null)
+  const [recordingElapsedTime, setRecordingElapsedTime] = useState(0)
 
   useEffect(() => {
     // Verificar que electronAPI esté disponible
@@ -48,7 +51,7 @@ function App() {
     })
   }, [])
 
-  // Efecto para contador de tiempo transcurrido
+  // Efecto para contador de tiempo transcurrido (transcripción)
   useEffect(() => {
     let interval: NodeJS.Timeout | null = null
 
@@ -63,6 +66,21 @@ function App() {
       if (interval) clearInterval(interval)
     }
   }, [isTranscribing, startTime])
+
+  // Efecto para contador de tiempo de grabación
+  useEffect(() => {
+    let interval: NodeJS.Timeout | null = null
+
+    if (isRecording && recordingStartTime && !isPaused) {
+      interval = setInterval(() => {
+        setRecordingElapsedTime(Math.floor((Date.now() - recordingStartTime) / 1000))
+      }, 1000)
+    }
+
+    return () => {
+      if (interval) clearInterval(interval)
+    }
+  }, [isRecording, recordingStartTime, isPaused])
 
   const loadConfig = async () => {
     try {
@@ -130,6 +148,8 @@ function App() {
       if (result.success) {
         setIsRecording(true)
         setRecordingPath(result.outputPath || null)
+        setRecordingStartTime(Date.now())
+        setRecordingElapsedTime(0)
         setStatusMessage('Grabando... Hable ahora')
       } else {
         setError(result.error || 'Error al iniciar grabación')
@@ -157,6 +177,8 @@ function App() {
       if (result.success) {
         setIsRecording(false)
         setIsPaused(false)
+        setRecordingStartTime(null)
+        setRecordingElapsedTime(0)
         const finalPath = result.outputPath || null
 
         setRecordingPath(finalPath)
@@ -184,27 +206,28 @@ function App() {
       setIsPaused(false)
       setIsCountingDown(false)
       setCountdown(null)
+      setRecordingStartTime(null)
+      setRecordingElapsedTime(0)
     }
   }
 
-  const handlePauseResume = async () => {
+  const handleCancelTranscription = async () => {
+    if (!window.electronAPI) return;
+
     try {
-      if (isPaused) {
-        const result = await window.electronAPI.resumeRecording()
-        if (result.success) {
-          setIsPaused(false)
-          setStatusMessage('Grabando...')
-        }
+      const result = await window.electronAPI.cancelTranscription();
+      if (result.success) {
+        setStatusMessage('Transcripción cancelada');
+        setIsTranscribing(false);
+        setTranscriptionProgress(0);
+        setStartTime(null);
+        setError(null);
       } else {
-        const result = await window.electronAPI.pauseRecording()
-        if (result.success) {
-          setIsPaused(true)
-          setStatusMessage('Pausado')
-        }
+        setError(result.message || 'No se pudo cancelar la transcripción');
       }
     } catch (err) {
-      console.error('Error:', err)
-      setError('Error al pausar/reanudar')
+      console.error('Error al cancelar transcripción:', err);
+      setError('Error al cancelar la transcripción');
     }
   }
 
@@ -436,24 +459,18 @@ function App() {
               ⏺ Grabar
             </button>
           ) : (
-            <>
-              <button
-                className="btn-record recording"
-                onClick={handleStopRecording}
-                disabled={isCountingDown}
-              >
-                ⏹ Detener
-              </button>
-              <button
-                className="btn-pause"
-                onClick={handlePauseResume}
-                disabled={isCountingDown}
-              >
-                {isPaused ? '▶ Reanudar' : '⏸ Pausar'}
-              </button>
-            </>
+            <button
+              className="btn-record recording"
+              onClick={handleStopRecording}
+              disabled={isCountingDown}
+            >
+              ⏹ Detener
+            </button>
           )}
         </div>
+
+        {/* Visualización de forma de onda */}
+        <Waveform isRecording={isRecording} isPaused={isPaused} />
 
         {/* Contador regresivo visual */}
         {isCountingDown && countdown !== null && (
@@ -467,6 +484,14 @@ function App() {
 
         <div className="status">
           <p>{statusMessage}</p>
+
+          {/* Mostrar contador de tiempo durante la grabación */}
+          {isRecording && (
+            <div className="recording-timer">
+              <span className="timer-label">⏱️ Tiempo de grabación:</span>
+              <span className="timer-value">{formatTime(recordingElapsedTime)}</span>
+            </div>
+          )}
 
           {/* Mostrar información de estimación durante la transcripción */}
           {estimation && isTranscribing && (
@@ -510,12 +535,21 @@ function App() {
           )}
 
           {isTranscribing && (
-            <div className="progress-bar">
-              <div
-                className="progress-fill"
-                style={{ width: `${transcriptionProgress}%` }}
-              />
-            </div>
+            <>
+              <div className="progress-bar">
+                <div
+                  className="progress-fill"
+                  style={{ width: `${transcriptionProgress}%` }}
+                />
+              </div>
+              <button
+                className="btn-cancel-transcription"
+                onClick={handleCancelTranscription}
+                title="Cancelar transcripción"
+              >
+                🛑 Cancelar Transcripción
+              </button>
+            </>
           )}
         </div>
 
@@ -542,19 +576,6 @@ function App() {
             <div className="transcription-text">
               {transcription.text}
             </div>
-            {transcription.segments && transcription.segments.length > 0 && (
-              <div className="segments">
-                <h3>Segmentos con timestamps:</h3>
-                {transcription.segments.map((segment) => (
-                  <div key={segment.id} className="segment">
-                    <span className="timestamp">
-                      [{formatTime(segment.start)} - {formatTime(segment.end)}]
-                    </span>
-                    <span className="segment-text">{segment.text}</span>
-                  </div>
-                ))}
-              </div>
-            )}
           </div>
         )}
           </>

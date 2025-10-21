@@ -19,6 +19,7 @@ class TranscriptionServiceLocal {
     this.whisperContext = null;
     this.modelName = 'base';
     this.modelPath = null;
+    this.currentTranscriptionStop = null; // Función para cancelar transcripción en curso
 
     // Tamaños mínimos esperados para cada modelo (en bytes)
     // Estos son valores aproximados para detectar descargas incompletas
@@ -375,7 +376,13 @@ class TranscriptionServiceLocal {
         detect_language: language === 'auto' || appConfig.detectLanguage,
       });
 
+      // Guardar referencia a la función stop para permitir cancelación
+      this.currentTranscriptionStop = stop;
+
       const result = await promise;
+
+      // Limpiar la referencia después de completar
+      this.currentTranscriptionStop = null;
 
       if (onProgress) {
         onProgress({ progress: 90, status: 'Procesando resultados...' });
@@ -684,6 +691,21 @@ class TranscriptionServiceLocal {
       };
     } catch (error) {
       throw new Error(`No se pudo descargar el modelo: ${error.message}`);
+    }
+  }
+
+  /**
+   * Cancela la transcripción en curso
+   * @returns {Object} Resultado de la cancelación
+   */
+  cancelTranscription() {
+    if (this.currentTranscriptionStop) {
+      console.log('🛑 Cancelando transcripción...');
+      this.currentTranscriptionStop();
+      this.currentTranscriptionStop = null;
+      return { success: true, message: 'Transcripción cancelada' };
+    } else {
+      return { success: false, message: 'No hay transcripción en curso' };
     }
   }
 }

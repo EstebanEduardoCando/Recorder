@@ -193,6 +193,16 @@ ipcMain.handle('transcribe-audio', async (event, audioPath, options) => {
   }
 });
 
+ipcMain.handle('cancel-transcription', async () => {
+  try {
+    const result = transcriptionService.cancelTranscription();
+    return result;
+  } catch (error) {
+    console.error('Error al cancelar transcripción:', error);
+    return { success: false, error: error.message };
+  }
+});
+
 ipcMain.handle('save-transcription', async (event, transcription, outputPath) => {
   try {
     const result = await transcriptionService.saveTranscription(transcription, outputPath);
